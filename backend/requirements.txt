@@ -1,0 +1,55 @@
+# FastAPI核心
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# 数据库
+sqlalchemy==2.0.23
+alembic==1.13.0
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+
+# 数据验证
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# AI/LLM SDK
+anthropic>=0.18.0
+openai>=1.6.1
+
+# 搜索API
+serpapi==0.1.5
+google-search-results==2.4.2
+
+# HTTP客户端
+httpx==0.25.2
+aiohttp==3.9.1
+
+# 定时任务
+apscheduler==3.10.4
+
+# 邮件
+aiosmtplib==3.0.1
+
+# 模板引擎
+jinja2==3.1.2
+
+# 环境变量
+python-dotenv==1.0.0
+
+# 日志
+loguru==0.7.2
+
+# 工具库
+python-dateutil==2.8.2
+pytz==2023.3
+orjson==3.9.10
+
+# 测试
+pytest==7.4.3
+pytest-asyncio==0.23.2
+
+# 开发工具
+black==23.12.1
+isort==5.13.2
+flake8==6.1.0

@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+venv/
+env/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 环境变量（敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 日志
+logs/
+*.log
+
+# 测试
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 其他
+*.md
+*.txt
+!requirements.txt
+.dockerignore
