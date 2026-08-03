@@ -6,7 +6,10 @@ from sqlalchemy import Column, String, Boolean, DateTime, Text, Integer
 from datetime import datetime
 import uuid
 
+from app.core.config import CST
 from app.models.database import Base
+
+_now_cst = lambda: datetime.now(CST)
 
 
 class Schedule(Base):
@@ -21,7 +24,7 @@ class Schedule(Base):
     last_run_at = Column(DateTime, comment="上次执行时间")
     next_run_at = Column(DateTime, comment="下次执行时间")
     config = Column(Text, comment="任务配置（JSON格式）")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime, default=_now_cst, comment="创建时间")
 
     def __repr__(self):
         return f"<Schedule(id={self.id}, name='{self.name}')>"

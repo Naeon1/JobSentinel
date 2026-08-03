@@ -2,9 +2,16 @@
 应用配置管理
 """
 
+from datetime import timezone, timedelta
 from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import validator
+
+
+# 项目统一使用的时区：东八区（北京时间）。
+# 定时任务调度器写死 Asia/Shanghai，故所有写入数据库的时间戳也用同一时区，
+# 保证日志、数据库、前端三方一致；序列化时带 +08:00，前端按浏览器本地时区正确换算。
+CST = timezone(timedelta(hours=8))
 
 
 class Settings(BaseSettings):

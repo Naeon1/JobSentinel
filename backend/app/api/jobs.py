@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from datetime import datetime, timedelta
+from app.core.config import CST
 
 from app.models.database import get_db
 from app.models.job import JobListing, SearchTask
@@ -354,7 +355,8 @@ async def get_dashboard_stats(
     job_count = db.query(JobListing).filter(JobListing.is_duplicate == False).count()
 
     # 今日新增
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    # 今日新增（按北京时间计算"今日"边界，与 crawled_at 的时区一致）
+    today = datetime.now(CST).replace(hour=0, minute=0, second=0, microsecond=0)
     today_count = db.query(JobListing).filter(
         JobListing.crawled_at >= today,
         JobListing.is_duplicate == False,

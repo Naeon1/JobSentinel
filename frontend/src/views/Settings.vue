@@ -64,6 +64,30 @@ const nextRunText = computed(() => {
   }
 })
 
+// 浏览器是否处于东八区（用于决定是否显示"北京时间"补充行）
+const isBrowserCST = computed(() => {
+  try {
+    // getTimezoneOffset 返回的是 UTC - 本地，分钟；东八区为 -480
+    return new Date().getTimezoneOffset() === -480
+  } catch {
+    return false
+  }
+})
+
+// 下次执行时间对应的北京时间（无论浏览器在哪个时区都恒定，因后端按东八区触发）
+const nextRunBeijingText = computed(() => {
+  if (!nextRunAt.value) return '—'
+  try {
+    const d = new Date(nextRunAt.value)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    // toLocaleString 指定时区 Asia/Shanghai，无论浏览器本地时区如何都输出北京时间
+    const beijing = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
+    return `${pad(beijing.getMonth() + 1)}-${pad(beijing.getDate())} ${pad(beijing.getHours())}:${pad(beijing.getMinutes())}`
+  } catch {
+    return '—'
+  }
+})
+
 // 切到 custom 时自动展开高级模式
 watch(
   () => scheduleConfig.value.frequency,
@@ -80,8 +104,8 @@ const scheduleRules: FormRules = {
 }
 
 // Cron 表达式说明（仅高级模式展示）
-const cronHelp = `Cron 5个字段，空格分隔：分 时 日 月 周
-- 0 9 * * *    每天 9:00
+const cronHelp = `Cron 5个字段，空格分隔：分 时 日 月 周（按北京时间执行）
+- 0 9 * * *    每天 9:00（北京）
 - 0 */2 * * *  每 2 小时整点
 - 0 9 * * 1-5  工作日 9:00
 - 0 9,18 * * * 每天 9:00 和 18:00`
@@ -159,6 +183,9 @@ onMounted(fetchScheduleConfig)
               :value="opt.value"
             />
           </el-select>
+          <div class="tz-hint">
+            所有执行时间均按<strong>北京时间（UTC+8）</strong>计算，与服务器所在时区无关。
+          </div>
         </el-form-item>
 
         <!-- 每天定点 -->
@@ -270,7 +297,12 @@ onMounted(fetchScheduleConfig)
               {{ humanDescription }}
             </el-descriptions-item>
             <el-descriptions-item label="下次执行">
-              {{ nextRunText }}
+              <div class="next-run-cell">
+                <span>{{ nextRunText }}</span>
+                <span v-if="!isBrowserCST" class="next-run-bj">
+                  （北京时间 {{ nextRunBeijingText }}）
+                </span>
+              </div>
             </el-descriptions-item>
           </el-descriptions>
         </el-form-item>
@@ -365,6 +397,25 @@ onMounted(fetchScheduleConfig)
   color: #909399;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.tz-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.6;
+}
+
+.next-run-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.next-run-bj {
+  font-size: 12px;
+  color: #909399;
 }
 
 code {

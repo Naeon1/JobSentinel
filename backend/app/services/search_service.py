@@ -5,6 +5,7 @@
 
 import json
 from datetime import datetime
+from app.core.config import CST
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -48,7 +49,7 @@ class SearchService:
             progress=0,
             steps_log=json.dumps([], ensure_ascii=False),
             position_title=position.title if position else None,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(CST),
         )
         self.db.add(task)
         self.db.commit()
@@ -113,7 +114,7 @@ class SearchService:
                 task.current_step = "done"
                 task.progress = 100
                 task.jobs_found = 0
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(CST)
                 self._append_step(task, "done", "done", "策略无查询词，任务结束", 100)
                 self.db.commit()
                 return {
@@ -171,7 +172,7 @@ class SearchService:
             task.status = "completed"
             task.current_step = "done"
             task.progress = 100
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(CST)
             task.jobs_found = saved_count
             self._append_step(
                 task, "done", "done",
@@ -201,7 +202,7 @@ class SearchService:
             tb = traceback.format_exc()
             task.status = "failed"
             task.error_message = str(e)
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(CST)
             self._append_step(task, task.current_step or "planning", "error", f"失败: {e}", task.progress or 0)
             self.db.commit()
             print(f"[SearchService] 任务 {task.id} 失败: {e}\n{tb}")
@@ -254,7 +255,7 @@ class SearchService:
             "status": status,
             "message": message,
             "progress": progress,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(CST).isoformat(),
         }
         if detail is not None:
             entry["detail"] = detail
@@ -326,7 +327,7 @@ class SearchService:
                 progress=0,
                 steps_log=json.dumps([], ensure_ascii=False),
                 position_title=position.title,
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(CST),
             )
             self.db.add(task)
             tasks.append(task)
@@ -360,7 +361,7 @@ class SearchService:
         try:
             task.status = "failed"
             task.error_message = message
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(CST)
             self._append_step(
                 task, task.current_step or "planning", "error", f"失败: {message}", task.progress or 0
             )
@@ -457,7 +458,7 @@ class SearchService:
                     existing.job_description = job_data.get("job_description", existing.job_description)
                     existing.requirements = job_data.get("requirements", existing.requirements)
                     existing.benefits = self._dump_json_list(job_data.get("benefits", existing.benefits))
-                    existing.crawled_at = datetime.utcnow()
+                    existing.crawled_at = datetime.now(CST)
                     stat["duplicated"] += 1
                 else:
                     # 创建新记录

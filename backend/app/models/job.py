@@ -7,7 +7,11 @@ from datetime import datetime
 import uuid
 import json
 
+from app.core.config import CST
 from app.models.database import Base
+
+# 时间戳默认值：统一写东八区带时区时间，序列化带 +08:00，前端按本地时区换算
+_now_cst = lambda: datetime.now(CST)
 
 
 class SearchTask(Base):
@@ -42,7 +46,7 @@ class SearchTask(Base):
     completed_at = Column(DateTime, comment="完成时间")
     error_message = Column(Text, comment="错误信息")
     jobs_found = Column(Integer, default=0, comment="找到的职位数")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime, default=_now_cst, comment="创建时间")
 
     def __repr__(self):
         return f"<SearchTask(id={self.id}, status='{self.status}')>"
@@ -115,7 +119,7 @@ class JobListing(Base):
 
     # 时间
     published_at = Column(DateTime, comment="发布时间")
-    crawled_at = Column(DateTime, default=datetime.utcnow, comment="抓取时间")
+    crawled_at = Column(DateTime, default=_now_cst, comment="抓取时间")
 
     # 状态
     is_duplicate = Column(Boolean, default=False, comment="是否重复")

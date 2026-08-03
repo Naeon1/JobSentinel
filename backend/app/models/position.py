@@ -7,7 +7,10 @@ from datetime import datetime
 import uuid
 import json
 
+from app.core.config import CST
 from app.models.database import Base
+
+_now_cst = lambda: datetime.now(CST)
 
 
 class PositionConfig(Base):
@@ -25,7 +28,7 @@ class PositionConfig(Base):
         comment="经验要求: junior/mid/senior"
     )
     is_active = Column(Boolean, default=True, comment="是否启用")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime, default=_now_cst, comment="创建时间")
 
     def __repr__(self):
         return f"<PositionConfig(id={self.id}, title='{self.title}')>"

@@ -7,7 +7,10 @@ from datetime import datetime
 import uuid
 import json
 
+from app.core.config import CST
 from app.models.database import Base
+
+_now_cst = lambda: datetime.now(CST)
 
 
 class Company(Base):
@@ -23,11 +26,11 @@ class Company(Base):
     industry = Column(String(50), comment="所属行业")
     notes = Column(Text, comment="备注")
     is_active = Column(Boolean, default=True, comment="是否启用")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime, default=_now_cst, comment="创建时间")
     updated_at = Column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=_now_cst,
+        onupdate=_now_cst,
         comment="更新时间"
     )
 
