@@ -8,6 +8,7 @@ import {
   Plus,
   Timer,
   Search,
+  ArrowRight,
 } from '@element-plus/icons-vue'
 import { dashboardApi, taskApi } from '../api'
 
@@ -103,6 +104,38 @@ const formatDate = (date: string) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
+// 统计卡片配置
+const statCards = [
+  {
+    key: 'company_count',
+    label: '监控公司',
+    gradient: 'var(--js-gradient-blue)',
+    icon: OfficeBuilding,
+    color: '#3b82f6',
+  },
+  {
+    key: 'job_count',
+    label: '招聘信息',
+    gradient: 'var(--js-gradient-green)',
+    icon: Document,
+    color: '#10b981',
+  },
+  {
+    key: 'today_count',
+    label: '今日新增',
+    gradient: 'var(--js-gradient-orange)',
+    icon: Plus,
+    color: '#f59e0b',
+  },
+  {
+    key: 'task_count',
+    label: '执行任务',
+    gradient: 'var(--js-gradient-purple)',
+    icon: Timer,
+    color: '#6366f1',
+  },
+]
+
 onMounted(() => {
   fetchStats()
   fetchRecentTasks()
@@ -112,175 +145,367 @@ onMounted(() => {
 <template>
   <div class="dashboard" v-loading="loading">
     <!-- 统计卡片 -->
-    <el-row :gutter="20" class="stat-cards">
-      <el-col :xs="12" :sm="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-item">
-            <el-icon class="stat-icon" :size="40" color="#409eff">
-              <OfficeBuilding />
+    <div class="stat-grid">
+      <div
+        v-for="card in statCards"
+        :key="card.key"
+        class="stat-card"
+      >
+        <div class="stat-card-bg" :style="{ background: card.gradient }"></div>
+        <div class="stat-card-content">
+          <div class="stat-icon-wrap" :style="{ color: card.color }">
+            <el-icon :size="24">
+              <component :is="card.icon" />
             </el-icon>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.company_count }}</div>
-              <div class="stat-label">监控公司</div>
-            </div>
           </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="12" :sm="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-item">
-            <el-icon class="stat-icon" :size="40" color="#67c23a">
-              <Document />
-            </el-icon>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.job_count }}</div>
-              <div class="stat-label">招聘信息</div>
-            </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ stats[card.key as keyof typeof stats] }}</div>
+            <div class="stat-label">{{ card.label }}</div>
           </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="12" :sm="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-item">
-            <el-icon class="stat-icon" :size="40" color="#e6a23c">
-              <Plus />
-            </el-icon>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.today_count }}</div>
-              <div class="stat-label">今日新增</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="12" :sm="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-item">
-            <el-icon class="stat-icon" :size="40" color="#909399">
-              <Timer />
-            </el-icon>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.task_count }}</div>
-              <div class="stat-label">执行任务</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 快捷操作 -->
-    <el-card class="quick-actions">
-      <template #header>
-        <div class="card-header">
-          <span>快捷操作</span>
         </div>
-      </template>
-      <el-space wrap>
-        <el-button
-          type="primary"
-          :icon="Search"
-          :loading="searching"
-          @click="runSearch"
-        >
-          立即执行搜索
-        </el-button>
-        <el-button @click="router.push('/companies')">
-          管理公司
-        </el-button>
-        <el-button @click="router.push('/positions')">
-          配置职位
-        </el-button>
-        <el-button @click="router.push('/jobs')">
-          查看结果
-        </el-button>
-      </el-space>
-    </el-card>
+      </div>
+    </div>
+
+    <!-- 快捷操作区 -->
+    <div class="action-section">
+      <div class="section-header">
+        <h2 class="section-title">快捷操作</h2>
+      </div>
+      <div class="action-cards">
+        <!-- 主操作卡片：执行搜索 -->
+        <button class="action-card primary" @click="runSearch" :disabled="searching">
+          <div class="action-icon">
+            <el-icon :size="28"><Search /></el-icon>
+          </div>
+          <div class="action-info">
+            <div class="action-title">立即执行搜索</div>
+            <div class="action-desc">运行 LLM 三阶段搜索流水线</div>
+          </div>
+          <el-icon v-if="!searching" :size="20" class="action-arrow"><ArrowRight /></el-icon>
+          <div v-if="searching" class="action-loading">
+            <div class="spinner"></div>
+          </div>
+        </button>
+
+        <!-- 次要操作 -->
+        <div class="action-secondary">
+          <button class="action-chip" @click="router.push('/companies')">
+            <el-icon :size="16"><OfficeBuilding /></el-icon>
+            <span>管理公司</span>
+          </button>
+          <button class="action-chip" @click="router.push('/positions')">
+            <el-icon :size="16"><Document /></el-icon>
+            <span>配置职位</span>
+          </button>
+          <button class="action-chip" @click="router.push('/jobs')">
+            <el-icon :size="16"><Timer /></el-icon>
+            <span>查看结果</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- 最近任务 -->
-    <el-card class="recent-tasks">
-      <template #header>
-        <div class="card-header">
-          <span>最近任务</span>
-          <el-button text @click="router.push('/tasks')">查看全部</el-button>
-        </div>
-      </template>
-
-      <el-table :data="recentTasks" stripe>
-        <el-table-column prop="company_name" label="公司" width="120" />
-        <el-table-column prop="position_title" label="职位" width="120" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status) as any">
-              {{ getStatusText(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="jobs_found" label="找到职位" width="100" />
-        <el-table-column label="完成时间">
-          <template #default="{ row }">
-            {{ formatDate(row.completed_at) }}
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <div class="tasks-section">
+      <div class="section-header">
+        <h2 class="section-title">最近任务</h2>
+        <button class="view-all-btn" @click="router.push('/tasks')">
+          查看全部 <el-icon :size="14"><ArrowRight /></el-icon>
+        </button>
+      </div>
+      <div class="tasks-card">
+        <el-table :data="recentTasks" stripe>
+          <el-table-column prop="company_name" label="公司" width="140" />
+          <el-table-column prop="position_title" label="职位" width="140" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status) as any" size="small" round>
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="jobs_found" label="找到职位" width="100" />
+          <el-table-column label="完成时间">
+            <template #default="{ row }">
+              {{ formatDate(row.completed_at) }}
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty
+          v-if="!recentTasks.length"
+          description="暂无任务记录"
+          :image-size="80"
+          style="padding: 40px 0"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.stat-cards {
-  margin-bottom: 0;
+/* ── 统计卡片 ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .stat-grid { grid-template-columns: 1fr; }
 }
 
 .stat-card {
-  height: 100%;
+  position: relative;
+  border-radius: var(--js-radius-lg);
+  overflow: hidden;
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  box-shadow: var(--js-card-shadow);
+  transition: all var(--js-transition);
 }
 
-.stat-item {
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--js-card-shadow-hover);
+}
+
+.stat-card-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 120px;
+  height: 120px;
+  opacity: 0.1;
+  border-radius: 0 0 0 100%;
+  transform: translate(20%, -20%);
+}
+
+.stat-card-content {
   display: flex;
   align-items: center;
   gap: 16px;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
 }
 
-.stat-icon {
-  flex-shrink: 0;
+.stat-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--js-radius-md);
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-.stat-content {
-  flex: 1;
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: #303133;
-  line-height: 1.2;
+  color: var(--js-text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 4px;
+  font-size: 13px;
+  color: var(--js-text-secondary);
+  font-weight: 500;
 }
 
-.card-header {
+/* ── 操作区 ── */
+.action-section {
+  margin-bottom: 32px;
+}
+
+.section-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
-.quick-actions {
-  margin-bottom: 0;
+.section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--js-text-primary);
+  letter-spacing: -0.01em;
 }
 
-.recent-tasks {
-  margin-bottom: 0;
+.view-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--js-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: all var(--js-transition);
+}
+
+.view-all-btn:hover {
+  color: var(--js-primary-light);
+}
+
+.action-cards {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.action-card.primary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+  border: none;
+  border-radius: var(--js-radius-lg);
+  cursor: pointer;
+  color: #ffffff;
+  text-align: left;
+  transition: all var(--js-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.action-card.primary::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+}
+
+.action-card.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+}
+
+.action-card.primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.action-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--js-radius-md);
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-info {
+  flex: 1;
+}
+
+.action-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.action-desc {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.action-arrow {
+  opacity: 0.7;
+  transition: all var(--js-transition);
+}
+
+.action-card.primary:hover .action-arrow {
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+.action-loading {
+  width: 24px;
+  height: 24px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.action-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  border-radius: var(--js-radius-md);
+  cursor: pointer;
+  color: var(--js-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--js-transition);
+  white-space: nowrap;
+}
+
+.action-chip:hover {
+  background: var(--js-primary-alpha);
+  border-color: var(--js-primary);
+  color: var(--js-primary);
+}
+
+/* ── 任务区 ── */
+.tasks-section {
+  margin-bottom: 32px;
+}
+
+.tasks-card {
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  border-radius: var(--js-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--js-card-shadow);
 }
 </style>

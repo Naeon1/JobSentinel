@@ -75,7 +75,6 @@ const fetchJobs = async () => {
       limit: pagination.value.size,
     }
 
-    // 添加筛选条件
     if (filters.value.company_id) params.company_id = filters.value.company_id
     if (filters.value.keyword) params.keyword = filters.value.keyword
     if (filters.value.location) params.location = filters.value.location
@@ -208,90 +207,115 @@ onMounted(() => {
 
 <template>
   <div class="job-list">
+    <!-- 页面标题栏 -->
+    <div class="page-header">
+      <div class="header-info">
+        <h2 class="page-title">招聘信息</h2>
+        <p class="page-desc">查看和管理搜索到的招聘结果</p>
+      </div>
+      <div class="header-actions">
+        <button
+          v-if="selectedJobs.length"
+          class="batch-delete-btn"
+          @click="batchDeleteJobs"
+        >
+          <el-icon :size="14"><Delete /></el-icon>
+          <span>批量删除 ({{ selectedJobs.length }})</span>
+        </button>
+      </div>
+    </div>
+
     <!-- 筛选条件 -->
-    <el-card class="filter-card">
-      <el-form :model="filters" inline>
-        <el-form-item label="公司">
-          <el-select
-            v-model="filters.company_id"
-            clearable
-            placeholder="选择公司"
-            style="width: 150px"
-          >
-            <el-option
-              v-for="company in companies"
-              :key="company.id"
-              :label="company.name"
-              :value="company.id"
-            />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="职位">
-          <el-input
-            v-model="filters.keyword"
-            placeholder="搜索职位"
-            clearable
-            style="width: 150px"
-            @keyup.enter="handleSearch"
+    <div class="filter-bar">
+      <div class="filter-item">
+        <label>公司</label>
+        <el-select
+          v-model="filters.company_id"
+          clearable
+          placeholder="全部公司"
+          style="width: 160px"
+        >
+          <el-option
+            v-for="company in companies"
+            :key="company.id"
+            :label="company.name"
+            :value="company.id"
           />
-        </el-form-item>
+        </el-select>
+      </div>
 
-        <el-form-item label="地点">
-          <el-input
-            v-model="filters.location"
-            placeholder="工作地点"
-            clearable
-            style="width: 120px"
-            @keyup.enter="handleSearch"
+      <div class="filter-item">
+        <label>职位</label>
+        <el-input
+          v-model="filters.keyword"
+          placeholder="搜索职位"
+          clearable
+          style="width: 140px"
+          @keyup.enter="handleSearch"
+        />
+      </div>
+
+      <div class="filter-item">
+        <label>地点</label>
+        <el-input
+          v-model="filters.location"
+          placeholder="工作地点"
+          clearable
+          style="width: 120px"
+          @keyup.enter="handleSearch"
+        />
+      </div>
+
+      <div class="filter-item">
+        <label>薪资</label>
+        <el-select
+          placeholder="不限"
+          style="width: 130px"
+          @change="handleSalaryChange"
+        >
+          <el-option
+            v-for="(range, index) in salaryRanges"
+            :key="index"
+            :label="range.label"
+            :value="range"
           />
-        </el-form-item>
+        </el-select>
+      </div>
 
-        <el-form-item label="薪资">
-          <el-select
-            placeholder="选择薪资范围"
-            style="width: 120px"
-            @change="handleSalaryChange"
-          >
-            <el-option
-              v-for="(range, index) in salaryRanges"
-              :key="index"
-              :label="range.label"
-              :value="range"
-            />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" :icon="Search" @click="handleSearch">
-            搜索
-          </el-button>
-          <el-button :icon="Refresh" @click="resetFilters">
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+      <div class="filter-actions">
+        <button class="filter-btn primary" @click="handleSearch">
+          <el-icon :size="14"><Search /></el-icon>
+          <span>搜索</span>
+        </button>
+        <button class="filter-btn" @click="resetFilters">
+          <el-icon :size="14"><Refresh /></el-icon>
+          <span>重置</span>
+        </button>
+      </div>
+    </div>
 
     <!-- 招聘信息表格 -->
-    <el-card>
-      <template #header>
-        <div class="table-header">
-          <span>招聘信息</span>
-          <el-button
-            v-if="selectedJobs.length"
-            type="danger"
-            :icon="Delete"
-            @click="batchDeleteJobs"
-          >
-            批量删除（{{ selectedJobs.length }}）
-          </el-button>
-        </div>
-      </template>
-      <el-table :data="jobs" v-loading="loading" stripe @selection-change="handleSelectionChange">
+    <div class="table-card">
+      <el-table
+        :data="jobs"
+        v-loading="loading"
+        stripe
+        @selection-change="handleSelectionChange"
+      >
         <el-table-column type="selection" width="50" />
-        <el-table-column prop="company_name" label="公司" width="120" />
-        <el-table-column prop="job_title" label="职位" min-width="150" />
+        <el-table-column prop="company_name" label="公司" width="140">
+          <template #default="{ row }">
+            <div class="company-cell">
+              <div class="company-avatar">{{ row.company_name?.charAt(0) || '?' }}</div>
+              <span>{{ row.company_name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="job_title" label="职位" min-width="160">
+          <template #default="{ row }">
+            <span class="job-title">{{ row.job_title }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="薪资" width="120">
           <template #default="{ row }">
             <span class="salary">{{ formatSalary(row) }}</span>
@@ -302,156 +326,143 @@ onMounted(() => {
         <el-table-column prop="education" label="学历" width="80" />
         <el-table-column label="在招" width="90">
           <template #default="{ row }">
-            <el-tag
-              :type="isOpenType(row.is_open)"
-              size="small"
-            >
+            <el-tag :type="isOpenType(row.is_open)" size="small" round>
               {{ isOpenText(row.is_open) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="source_platform" label="来源" width="100" />
-        <el-table-column label="更新时间" width="110">
+        <el-table-column prop="source_platform" label="来源" width="100">
+          <template #default="{ row }">
+            <span class="platform-badge">{{ row.source_platform || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="更新" width="110">
           <template #default="{ row }">
             {{ formatDate(row.crawled_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="170" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button
-              type="primary"
-              link
-              :icon="View"
-              @click="viewDetail(row)"
-            >
-              详情
-            </el-button>
-            <el-button
-              type="primary"
-              link
-              :icon="Link"
-              @click="openSource(row)"
-            >
-              原文
-            </el-button>
-            <el-button
-              type="danger"
-              link
-              :icon="Delete"
-              @click="deleteJob(row)"
-            >
-              删除
-            </el-button>
+            <div class="action-btns">
+              <button class="action-btn" @click="viewDetail(row)">
+                <el-icon :size="14"><View /></el-icon>
+              </button>
+              <button
+                class="action-btn"
+                :disabled="!row.source_url"
+                @click="openSource(row)"
+              >
+                <el-icon :size="14"><Link /></el-icon>
+              </button>
+              <button class="action-btn danger" @click="deleteJob(row)">
+                <el-icon :size="14"><Delete /></el-icon>
+              </button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination-wrapper">
+      <div class="pagination-wrap">
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.size"
           :total="pagination.total"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
+          layout="total, sizes, prev, pager, next"
           @current-change="handlePageChange"
           @size-change="handleSizeChange"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 详情对话框 -->
     <el-dialog
       v-model="detailVisible"
       title="职位详情"
       width="700px"
+      destroy-on-close
     >
       <div v-if="currentJob" class="job-detail">
-        <h3>{{ currentJob.job_title }}</h3>
+        <div class="detail-header">
+          <h3 class="detail-title">{{ currentJob.job_title }}</h3>
+          <el-tag :type="isOpenType(currentJob.is_open)" size="default" round>
+            {{ isOpenText(currentJob.is_open) }}
+          </el-tag>
+        </div>
 
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="公司">
-            {{ currentJob.company_name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="薪资">
-            {{ formatSalary(currentJob) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="地点">
-            {{ currentJob.location || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="经验">
-            {{ currentJob.experience_years || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="学历">
-            {{ currentJob.education || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="来源">
-            {{ currentJob.source_platform || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="是否在招">
-            <el-tag :type="isOpenType(currentJob.is_open)" size="small">
-              {{ isOpenText(currentJob.is_open) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="原文链接" :span="2">
-            <el-link
-              v-if="currentJob.source_url"
-              :href="currentJob.source_url"
-              type="primary"
-              target="_blank"
-            >
-              {{ currentJob.source_url }}
-            </el-link>
-            <span v-else>-</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="发布时间" :span="2">
-            {{ formatDate(currentJob.published_at) }}
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <div v-if="currentJob.skills?.length" class="section">
-          <h4>技能要求 <span class="hint">（从搜索摘要提取，可能不完整）</span></h4>
-          <div class="skills">
-            <el-tag
-              v-for="skill in currentJob.skills"
-              :key="skill"
-              class="skill-tag"
-            >
-              {{ skill }}
-            </el-tag>
+        <div class="detail-meta">
+          <div class="meta-item">
+            <span class="meta-label">公司</span>
+            <span class="meta-value">{{ currentJob.company_name }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">薪资</span>
+            <span class="meta-value salary">{{ formatSalary(currentJob) }}</span>
+          </div>
+          <div class="meta-item" v-if="currentJob.location">
+            <span class="meta-label">地点</span>
+            <span class="meta-value">{{ currentJob.location }}</span>
+          </div>
+          <div class="meta-item" v-if="currentJob.experience_years">
+            <span class="meta-label">经验</span>
+            <span class="meta-value">{{ currentJob.experience_years }}</span>
+          </div>
+          <div class="meta-item" v-if="currentJob.education">
+            <span class="meta-label">学历</span>
+            <span class="meta-value">{{ currentJob.education }}</span>
+          </div>
+          <div class="meta-item" v-if="currentJob.source_platform">
+            <span class="meta-label">来源</span>
+            <span class="meta-value">{{ currentJob.source_platform }}</span>
           </div>
         </div>
 
-        <div v-if="currentJob.job_description" class="section">
+        <div class="detail-url" v-if="currentJob.source_url">
+          <span class="meta-label">原文链接</span>
+          <a :href="currentJob.source_url" target="_blank" class="source-link">
+            {{ currentJob.source_url }}
+          </a>
+        </div>
+
+        <div v-if="currentJob.skills?.length" class="detail-section">
+          <h4>技能要求 <span class="hint">（从搜索摘要提取，可能不完整）</span></h4>
+          <div class="skills-wrap">
+            <span v-for="skill in currentJob.skills" :key="skill" class="skill-tag">
+              {{ skill }}
+            </span>
+          </div>
+        </div>
+
+        <div v-if="currentJob.job_description" class="detail-section">
           <h4>职位描述</h4>
           <div class="description">{{ currentJob.job_description }}</div>
         </div>
 
-        <div v-if="currentJob.requirements" class="section">
+        <div v-if="currentJob.requirements" class="detail-section">
           <h4>任职要求</h4>
           <div class="description">{{ currentJob.requirements }}</div>
         </div>
 
-        <div v-if="currentJob.benefits?.length" class="section">
+        <div v-if="currentJob.benefits?.length" class="detail-section">
           <h4>福利待遇</h4>
-          <div class="benefits">
-            <el-tag
-              v-for="benefit in currentJob.benefits"
-              :key="benefit"
-              type="success"
-              class="benefit-tag"
-            >
+          <div class="benefits-wrap">
+            <span v-for="benefit in currentJob.benefits" :key="benefit" class="benefit-tag">
               {{ benefit }}
-            </el-tag>
+            </span>
           </div>
         </div>
       </div>
 
       <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
-        <el-button type="primary" @click="openSource(currentJob)">
+        <button class="dialog-btn cancel" @click="detailVisible = false">关闭</button>
+        <button
+          class="dialog-btn primary"
+          @click="openSource(currentJob)"
+          :disabled="!currentJob?.source_url"
+        >
           查看原文
-        </el-button>
+        </button>
       </template>
     </el-dialog>
   </div>
@@ -459,72 +470,360 @@ onMounted(() => {
 
 <style scoped>
 .job-list {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── 页面标题栏 ── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.header-info {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 4px;
 }
 
-.table-header {
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--js-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.page-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--js-text-secondary);
+}
+
+.header-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 12px;
 }
 
-.filter-card {
-  margin-bottom: 0;
+.batch-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--js-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--js-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--js-transition);
+}
+
+.batch-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ── 筛选栏 ── */
+.filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  border-radius: var(--js-radius-lg);
+  margin-bottom: 16px;
+  box-shadow: var(--js-card-shadow);
+  flex-wrap: wrap;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-item label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--js-text-secondary);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  border-radius: var(--js-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--js-text-primary);
+  transition: all var(--js-transition);
+}
+
+.filter-btn:hover {
+  background: var(--js-page-bg);
+}
+
+.filter-btn.primary {
+  background: var(--js-primary);
+  border-color: var(--js-primary);
+  color: #fff;
+}
+
+.filter-btn.primary:hover {
+  background: var(--js-primary-light);
+  border-color: var(--js-primary-light);
+}
+
+/* ── 表格卡片 ── */
+.table-card {
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  border-radius: var(--js-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--js-card-shadow);
+}
+
+.company-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.company-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--js-primary-alpha);
+  color: var(--js-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.job-title {
+  font-weight: 600;
+  color: var(--js-text-primary);
 }
 
 .salary {
-  color: #e6a23c;
-  font-weight: 600;
+  color: #f59e0b;
+  font-weight: 700;
 }
 
-.pagination-wrapper {
-  margin-top: 20px;
+.platform-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  color: var(--js-text-secondary);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.action-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--js-text-secondary);
+  transition: all var(--js-transition);
+}
+
+.action-btn:hover {
+  background: var(--js-page-bg);
+  color: var(--js-text-primary);
+}
+
+.action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--js-danger);
+}
+
+.action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── 分页 ── */
+.pagination-wrap {
+  padding: 16px 20px;
+  border-top: 1px solid var(--js-card-border);
   display: flex;
   justify-content: flex-end;
 }
 
-.job-detail h3 {
-  margin: 0 0 20px 0;
+/* ── 详情对话框 ── */
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.detail-title {
+  margin: 0;
   font-size: 20px;
-  color: #303133;
+  font-weight: 700;
+  color: var(--js-text-primary);
 }
 
-.section {
-  margin-top: 20px;
+.detail-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--js-page-bg);
+  border-radius: var(--js-radius-md);
 }
 
-.section h4 {
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-label {
+  font-size: 12px;
+  color: var(--js-text-tertiary);
+  font-weight: 500;
+}
+
+.meta-value {
+  font-size: 14px;
+  color: var(--js-text-primary);
+  font-weight: 500;
+}
+
+.meta-value.salary {
+  color: #f59e0b;
+}
+
+.detail-url {
+  margin-bottom: 20px;
+}
+
+.detail-url .meta-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.source-link {
+  color: var(--js-primary);
+  word-break: break-all;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section h4 {
   margin: 0 0 10px 0;
-  font-size: 16px;
-  color: #303133;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--js-text-primary);
 }
 
 .hint {
   font-size: 12px;
-  color: #999;
+  color: var(--js-text-tertiary);
   font-weight: normal;
 }
 
-.skills,
-.benefits {
+.skills-wrap,
+.benefits-wrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
-.skill-tag,
+.skill-tag {
+  padding: 4px 10px;
+  background: var(--js-primary-alpha);
+  color: var(--js-primary);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .benefit-tag {
-  margin: 0;
+  padding: 4px 10px;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--js-success);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .description {
   white-space: pre-wrap;
-  line-height: 1.8;
-  color: #606266;
-  background-color: #f5f7fa;
-  padding: 12px;
-  border-radius: 4px;
+  line-height: 1.7;
+  color: var(--js-text-secondary);
+  background: var(--js-page-bg);
+  padding: 14px;
+  border-radius: var(--js-radius-md);
+  font-size: 13px;
+}
+
+/* ── 对话框按钮 ── */
+.dialog-btn {
+  padding: 10px 20px;
+  border-radius: var(--js-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--js-transition);
+}
+
+.dialog-btn.cancel {
+  background: transparent;
+  border: 1px solid var(--js-card-border);
+  color: var(--js-text-secondary);
+}
+
+.dialog-btn.cancel:hover {
+  background: var(--js-page-bg);
+}
+
+.dialog-btn.primary {
+  background: var(--js-primary);
+  border: none;
+  color: #fff;
+}
+
+.dialog-btn.primary:hover {
+  background: var(--js-primary-light);
+}
+
+.dialog-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

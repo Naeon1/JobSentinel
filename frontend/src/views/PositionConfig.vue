@@ -165,107 +165,120 @@ onMounted(fetchPositions)
 
 <template>
   <div class="position-config">
-    <!-- 顶部操作栏 -->
-    <div class="header">
-      <h3>职位配置</h3>
-      <el-button type="primary" :icon="Plus" @click="showAddDialog">
-        添加职位
-      </el-button>
+    <!-- 页面标题栏 -->
+    <div class="page-header">
+      <div class="header-info">
+        <h2 class="page-title">职位配置</h2>
+        <p class="page-desc">配置搜索关键词、排除词和目标城市</p>
+      </div>
+      <button class="add-btn" @click="showAddDialog">
+        <el-icon :size="16"><Plus /></el-icon>
+        <span>添加职位</span>
+      </button>
     </div>
 
     <!-- 职位表格 -->
-    <el-card>
+    <div class="table-card">
       <el-table :data="positions" v-loading="loading" stripe>
-        <el-table-column prop="title" label="职位名称" width="150" />
-        <el-table-column label="搜索关键词" min-width="200">
+        <el-table-column prop="title" label="职位名称" width="160">
           <template #default="{ row }">
-            <el-tag
-              v-for="keyword in row.keywords"
-              :key="keyword"
-              size="small"
-              class="keyword-tag"
-            >
-              {{ keyword }}
-            </el-tag>
-            <span v-if="!row.keywords?.length">-</span>
+            <div class="position-title">
+              <span>{{ row.title }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="目标城市" min-width="150">
+        <el-table-column label="搜索关键词" min-width="220">
           <template #default="{ row }">
-            <el-tag
-              v-for="location in row.locations"
-              :key="location"
-              size="small"
-              type="success"
-              class="keyword-tag"
-            >
-              {{ location }}
-            </el-tag>
-            <span v-if="!row.locations?.length">全国</span>
+            <div class="tags-wrap" v-if="row.keywords?.length">
+              <span
+                v-for="keyword in row.keywords"
+                :key="keyword"
+                class="tag keyword-tag"
+              >
+                {{ keyword }}
+              </span>
+            </div>
+            <span v-else class="text-tertiary">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="目标城市" min-width="160">
+          <template #default="{ row }">
+            <div class="tags-wrap" v-if="row.locations?.length">
+              <span
+                v-for="location in row.locations"
+                :key="location"
+                class="tag location-tag"
+              >
+                {{ location }}
+              </span>
+            </div>
+            <span v-else class="text-tertiary">全国</span>
           </template>
         </el-table-column>
         <el-table-column label="经验要求" width="100">
           <template #default="{ row }">
-            {{ getExperienceLabel(row.experience_level) }}
+            <span class="experience-badge">{{ getExperienceLabel(row.experience_level) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="is_active" label="状态" width="80">
+        <el-table-column prop="is_active" label="状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'info'">
-              {{ row.is_active ? '启用' : '禁用' }}
-            </el-tag>
+            <div class="status-wrap">
+              <span class="status-dot" :class="row.is_active ? 'active' : 'inactive'"></span>
+              <span>{{ row.is_active ? '启用' : '禁用' }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button
-              type="primary"
-              link
-              :icon="Edit"
-              @click="showEditDialog(row)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              v-if="row.is_active"
-              type="warning"
-              link
-              @click="disablePosition(row)"
-            >
-              禁用
-            </el-button>
-            <el-button
-              v-else
-              type="success"
-              link
-              @click="enablePosition(row)"
-            >
-              启用
-            </el-button>
-            <el-button
-              type="danger"
-              link
-              :icon="Delete"
-              @click="hardDeletePosition(row)"
-            >
-              删除
-            </el-button>
+            <div class="action-btns">
+              <button class="action-btn" @click="showEditDialog(row)">
+                <el-icon :size="14"><Edit /></el-icon>
+              </button>
+              <button
+                v-if="row.is_active"
+                class="action-btn warning"
+                @click="disablePosition(row)"
+              >
+                <span class="btn-text">禁用</span>
+              </button>
+              <button
+                v-else
+                class="action-btn success"
+                @click="enablePosition(row)"
+              >
+                <span class="btn-text">启用</span>
+              </button>
+              <button
+                class="action-btn danger"
+                @click="hardDeletePosition(row)"
+              >
+                <el-icon :size="14"><Delete /></el-icon>
+              </button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+
+      <el-empty
+        v-if="!loading && !positions.length"
+        description="暂无职位配置，点击上方按钮添加"
+        :image-size="80"
+        style="padding: 60px 0"
+      />
+    </div>
 
     <!-- 添加/编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑职位配置' : '添加职位配置'"
-      width="600px"
+      width="560px"
+      destroy-on-close
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
-        label-width="110px"
+        label-position="top"
       >
         <el-form-item label="职位名称" prop="title">
           <el-input
@@ -285,10 +298,9 @@ onMounted(fetchPositions)
             default-first-option
             placeholder="输入关键词后回车添加"
             style="width: 100%"
+            :persistent="false"
           />
-          <div class="form-tip">
-            用于搜索的关键词，如：Python、机器学习、大模型
-          </div>
+          <div class="form-tip">用于搜索的关键词，如：Python、机器学习、大模型</div>
         </el-form-item>
 
         <el-form-item label="排除关键词">
@@ -300,10 +312,9 @@ onMounted(fetchPositions)
             default-first-option
             placeholder="输入要排除的关键词"
             style="width: 100%"
+            :persistent="false"
           />
-          <div class="form-tip">
-            包含这些关键词的结果将被过滤
-          </div>
+          <div class="form-tip">包含这些关键词的结果将被过滤</div>
         </el-form-item>
 
         <el-form-item label="目标城市">
@@ -315,10 +326,9 @@ onMounted(fetchPositions)
             default-first-option
             placeholder="输入城市后回车添加"
             style="width: 100%"
+            :persistent="false"
           />
-          <div class="form-tip">
-            不填则搜索全国范围
-          </div>
+          <div class="form-tip">不填则搜索全国范围</div>
         </el-form-item>
 
         <el-form-item label="经验要求">
@@ -338,10 +348,10 @@ onMounted(fetchPositions)
       </el-form>
 
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitForm">
-          确定
-        </el-button>
+        <button class="dialog-btn cancel" @click="dialogVisible = false">取消</button>
+        <button class="dialog-btn primary" @click="submitForm" :disabled="submitting">
+          {{ submitting ? '保存中...' : '确定' }}
+        </button>
       </template>
     </el-dialog>
   </div>
@@ -349,31 +359,230 @@ onMounted(fetchPositions)
 
 <style scoped>
 .position-config {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── 页面标题栏 ── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.header-info {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 4px;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header h3 {
+.page-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--js-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.page-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--js-text-secondary);
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: var(--js-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--js-radius-sm);
+  font-size: 14px;
   font-weight: 600;
+  cursor: pointer;
+  transition: all var(--js-transition);
+}
+
+.add-btn:hover {
+  background: var(--js-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* ── 表格卡片 ── */
+.table-card {
+  background: var(--js-card-bg);
+  border: 1px solid var(--js-card-border);
+  border-radius: var(--js-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--js-card-shadow);
+}
+
+/* ── 职位标题 ── */
+.position-title {
+  font-weight: 600;
+  color: var(--js-text-primary);
+}
+
+/* ── 标签 ── */
+.tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .keyword-tag {
-  margin-right: 6px;
-  margin-bottom: 4px;
+  background: var(--js-primary-alpha);
+  color: var(--js-primary);
 }
 
+.location-tag {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--js-success);
+}
+
+.experience-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  color: var(--js-text-secondary);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.text-tertiary {
+  color: var(--js-text-tertiary);
+}
+
+/* ── 状态 ── */
+.status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--js-text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.active {
+  background: var(--js-success);
+  box-shadow: 0 0 6px var(--js-success);
+}
+
+.status-dot.inactive {
+  background: var(--js-text-tertiary);
+}
+
+/* ── 操作按钮 ── */
+.action-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--js-radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--js-text-secondary);
+  transition: all var(--js-transition);
+}
+
+.action-btn:hover {
+  background: var(--js-page-bg);
+  color: var(--js-text-primary);
+}
+
+.action-btn.warning {
+  color: var(--js-warning);
+}
+
+.action-btn.warning:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.action-btn.success {
+  color: var(--js-success);
+}
+
+.action-btn.success:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--js-danger);
+}
+
+.btn-text {
+  font-size: 13px;
+}
+
+/* ── 表单 ── */
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--js-text-tertiary);
   margin-top: 4px;
+}
+
+/* ── 对话框按钮 ── */
+.dialog-btn {
+  padding: 10px 20px;
+  border-radius: var(--js-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--js-transition);
+}
+
+.dialog-btn.cancel {
+  background: transparent;
+  border: 1px solid var(--js-card-border);
+  color: var(--js-text-secondary);
+}
+
+.dialog-btn.cancel:hover {
+  background: var(--js-page-bg);
+  color: var(--js-text-primary);
+}
+
+.dialog-btn.primary {
+  background: var(--js-primary);
+  border: none;
+  color: #fff;
+}
+
+.dialog-btn.primary:hover {
+  background: var(--js-primary-light);
+}
+
+.dialog-btn.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
