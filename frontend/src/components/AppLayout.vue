@@ -31,6 +31,14 @@ const menuItems = [
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
 
+// 导航分组（变体2：结构分解轴）
+const navGroups = [
+  { label: '监测', items: [menuItems[0], menuItems[3]] },
+  { label: '配置', items: [menuItems[1], menuItems[2]] },
+  { label: '运行', items: [menuItems[4], menuItems[5]] },
+  { label: '系统', items: [menuItems[6]] },
+]
+
 // 页面标题
 const pageTitle = computed(() => (route.meta.title as string) || '仪表盘')
 
@@ -71,22 +79,27 @@ const navigateTo = (path: string) => {
 
       <!-- 导航菜单 -->
       <nav class="sidebar-nav">
-        <div
-          v-for="item in menuItems"
-          :key="item.path"
-          class="nav-item"
-          :class="{ active: activeMenu === item.path }"
-          @click="navigateTo(item.path)"
-        >
-          <el-icon class="nav-icon">
-            <component :is="item.icon" />
-          </el-icon>
-          <transition name="fade">
-            <span v-if="!isCollapse" class="nav-text">{{ item.title }}</span>
-          </transition>
-          <!-- 激活指示器 -->
-          <div v-if="activeMenu === item.path" class="active-indicator"></div>
-        </div>
+        <template v-for="(group, gi) in navGroups" :key="group.label">
+          <div v-if="!isCollapse" class="nav-group">
+            <div class="group-label">{{ group.label }}</div>
+          </div>
+          <div v-else-if="gi > 0" style="height: 8px"></div>
+          <div
+            v-for="item in group.items"
+            :key="item.path"
+            class="nav-item"
+            :class="{ active: activeMenu === item.path }"
+            @click="navigateTo(item.path)"
+          >
+            <el-icon class="nav-icon">
+              <component :is="item.icon" />
+            </el-icon>
+            <transition name="fade">
+              <span v-if="!isCollapse" class="nav-text">{{ item.title }}</span>
+            </transition>
+            <div v-if="activeMenu === item.path" class="active-indicator"></div>
+          </div>
+        </template>
       </nav>
 
       <!-- 侧栏底部 -->
@@ -238,6 +251,40 @@ const navigateTo = (path: string) => {
   background: var(--js-primary);
   border-radius: 0 3px 3px 0;
   box-shadow: 0 0 8px var(--js-primary);
+}
+
+/* 分组化导航（结构分解轴变体，已接受） */
+.sidebar-nav {
+  padding: 8px 10px;
+  gap: 2px;
+}
+.nav-group {
+  margin-top: 12px;
+}
+.nav-group:first-child {
+  margin-top: 4px;
+}
+.group-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.55);
+  padding: 0 12px 6px 12px;
+  white-space: nowrap;
+}
+.nav-item {
+  gap: 11px;
+  padding: 8px 12px;
+  border-radius: var(--js-radius-sm);
+  font-weight: 500;
+}
+.nav-icon {
+  font-size: 16px;
+}
+.nav-text {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* 底部收起按钮 */
