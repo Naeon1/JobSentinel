@@ -232,3 +232,22 @@ export const configTestApi = {
     return api.post('/api/email/test', data || {})
   },
 }
+
+// ==================== 邮件通知记录API ====================
+
+export const emailLogApi = {
+  /** 获取邮件通知记录列表 */
+  list(params?: {
+    skip?: number
+    limit?: number
+    status?: string
+    trigger_type?: string
+  }) {
+    return api.get('/api/email-logs/', { params })
+  },
+
+  /** 删除单条邮件通知记录 */
+  delete(id: string) {
+    return api.delete(`/api/email-logs/${id}`)
+  },
+}

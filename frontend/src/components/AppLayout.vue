@@ -11,6 +11,7 @@ import {
   Expand,
   Refresh,
   DataLine,
+  Message,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -25,6 +26,7 @@ const menuItems = [
   { path: '/jobs', title: '招聘信息', icon: Timer },
   { path: '/tasks', title: '任务历史', icon: DataLine },
   { path: '/executions', title: '执行过程', icon: Odometer },
+  { path: '/email-logs', title: '邮件通知', icon: Message },
   { path: '/settings', title: '系统设置', icon: Setting },
 ]
 
@@ -35,8 +37,8 @@ const activeMenu = computed(() => route.path)
 const navGroups = [
   { label: '监测', items: [menuItems[0], menuItems[3]] },
   { label: '配置', items: [menuItems[1], menuItems[2]] },
-  { label: '运行', items: [menuItems[4], menuItems[5]] },
-  { label: '系统', items: [menuItems[6]] },
+  { label: '运行', items: [menuItems[4], menuItems[5], menuItems[6]] },
+  { label: '系统', items: [menuItems[7]] },
 ]
 
 // 页面标题

@@ -7,6 +7,7 @@ from app.models.company import Company
 from app.models.position import PositionConfig
 from app.models.job import SearchTask, JobListing
 from app.models.schedule import Schedule, EmailConfig
+from app.models.email_log import EmailLog
 
 __all__ = [
     "Base",
@@ -18,4 +19,5 @@ __all__ = [
     "JobListing",
     "Schedule",
     "EmailConfig",
+    "EmailLog",
 ]

@@ -12,8 +12,7 @@ from app.models.position import PositionConfig
 from app.models.job import SearchTask
 from app.schemas.job import RunSearchRequest
 from app.services.search_service import SearchService
-from app.services.email_service import EmailService
-from app.core.config import settings
+from app.services.email_service import EmailService, record_email_log
 
 router = APIRouter(prefix="/api/tasks", tags=["任务执行"])
 
@@ -44,16 +43,36 @@ def run_search_background(task_ids: list):
     finally:
         db.close()
 
-    # 发送邮件报告
-    if results and settings.SMTP_USERNAME and settings.SMTP_PASSWORD and settings.EMAIL_TO_LIST:
+    # 发送邮件报告（无论成功/失败/跳过都落库一条 EmailLog）
+    if results:
+        log_db = SessionLocal()
         try:
             email_service = EmailService()
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(email_service.send_search_report(results))
+            outcome = loop.run_until_complete(email_service.send_search_report(results))
             loop.close()
+            record_email_log(log_db, trigger_type="manual", task_results=results, send_outcome=outcome)
         except Exception as e:
             print(f"[run_search_background] 发送邮件报告失败: {e}")
+            try:
+                record_email_log(
+                    log_db,
+                    trigger_type="manual",
+                    task_results=results,
+                    send_outcome={
+                        "success": False,
+                        "skipped": False,
+                        "subject": None,
+                        "recipients": [],
+                        "error": str(e),
+                        "duration_ms": 0,
+                    },
+                )
+            except Exception:
+                pass
+        finally:
+            log_db.close()
 
 
 @router.post("/run")

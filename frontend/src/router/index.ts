@@ -48,6 +48,12 @@ const router = createRouter({
       meta: { title: '执行过程' },
     },
     {
+      path: '/email-logs',
+      name: 'EmailLogs',
+      component: () => import('../views/EmailLog.vue'),
+      meta: { title: '邮件通知' },
+    },
+    {
       path: '/settings',
       name: 'Settings',
       component: () => import('../views/Settings.vue'),

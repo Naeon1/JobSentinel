@@ -20,7 +20,7 @@ from app.core.config import settings
 from app.models.database import SessionLocal
 from app.models.job import SearchTask
 from app.services.search_service import SearchService
-from app.services.email_service import EmailService
+from app.services.email_service import EmailService, record_email_log
 
 
 # 单例调度器（进程内唯一）
@@ -51,9 +51,9 @@ def _run_scheduled_batch() -> None:
         ok = sum(1 for r in results if r.get("status") == "completed")
         print(f"[Scheduler] 本次批量搜索完成：成功 {ok}/{len(results)}")
 
-        # 发送邮件报告
+        # 发送邮件报告（无论成败/跳过都落库一条 EmailLog）
         if results:
-            _send_email_report(results)
+            _send_email_report(db, results)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -159,18 +159,35 @@ def shutdown_scheduler() -> None:
             _scheduler = None
 
 
-def _send_email_report(task_results: list) -> None:
-    """发送邮件报告（在独立线程中运行异步代码）。"""
-    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-        return
-    if not settings.EMAIL_TO_LIST:
-        return
+def _send_email_report(db, task_results: list) -> None:
+    """发送邮件报告（在独立线程中运行异步代码），并把发送结果落库。
 
+    无论成功/失败/因配置缺失而跳过，都写一条 EmailLog，便于前端
+    「邮件通知」页面看到每次定时触发的邮件发送情况。
+    """
     try:
         email_service = EmailService()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(email_service.send_search_report(task_results))
+        outcome = loop.run_until_complete(email_service.send_search_report(task_results))
         loop.close()
+        record_email_log(db, trigger_type="scheduled", task_results=task_results, send_outcome=outcome)
     except Exception as e:
         print(f"[Scheduler] 发送邮件报告失败: {e}")
+        # 兜底：即便发送流程整体异常也要留一条 failed 记录
+        try:
+            record_email_log(
+                db,
+                trigger_type="scheduled",
+                task_results=task_results,
+                send_outcome={
+                    "success": False,
+                    "skipped": False,
+                    "subject": None,
+                    "recipients": [],
+                    "error": str(e),
+                    "duration_ms": 0,
+                },
+            )
+        except Exception:
+            pass

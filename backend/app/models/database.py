@@ -38,7 +38,7 @@ def get_db():
 def init_db():
     """初始化数据库（创建所有表）"""
     # 导入所有模型以确保它们被注册
-    from app.models import company, position, job, schedule
+    from app.models import company, position, job, schedule, email_log
 
     # 创建所有表
     Base.metadata.create_all(bind=engine)
