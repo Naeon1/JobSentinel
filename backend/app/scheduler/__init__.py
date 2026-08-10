@@ -10,6 +10,7 @@
 """
 
 import threading
+import asyncio
 from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -19,6 +20,7 @@ from app.core.config import settings
 from app.models.database import SessionLocal
 from app.models.job import SearchTask
 from app.services.search_service import SearchService
+from app.services.email_service import EmailService
 
 
 # 单例调度器（进程内唯一）
@@ -48,6 +50,10 @@ def _run_scheduled_batch() -> None:
         results = search_service.run_existing_tasks(task_ids)
         ok = sum(1 for r in results if r.get("status") == "completed")
         print(f"[Scheduler] 本次批量搜索完成：成功 {ok}/{len(results)}")
+
+        # 发送邮件报告
+        if results:
+            _send_email_report(results)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -151,3 +157,20 @@ def shutdown_scheduler() -> None:
             print(f"[Scheduler] 停止调度器时出错：{e}")
         finally:
             _scheduler = None
+
+
+def _send_email_report(task_results: list) -> None:
+    """发送邮件报告（在独立线程中运行异步代码）。"""
+    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+        return
+    if not settings.EMAIL_TO_LIST:
+        return
+
+    try:
+        email_service = EmailService()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(email_service.send_search_report(task_results))
+        loop.close()
+    except Exception as e:
+        print(f"[Scheduler] 发送邮件报告失败: {e}")

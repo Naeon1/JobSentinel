@@ -21,7 +21,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.models.database import init_db, SessionLocal
 from app.models.job import SearchTask
-from app.api import companies, positions, jobs, tasks, schedules
+from app.api import companies, positions, jobs, tasks, schedules, email
 from app.scheduler import init_scheduler, shutdown_scheduler
 
 
@@ -89,6 +89,7 @@ app.include_router(positions.router)
 app.include_router(jobs.router)
 app.include_router(tasks.router)
 app.include_router(schedules.router)
+app.include_router(email.router)
 
 
 @app.get("/")

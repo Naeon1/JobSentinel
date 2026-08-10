@@ -2,6 +2,7 @@
 任务执行API
 """
 
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,8 @@ from app.models.position import PositionConfig
 from app.models.job import SearchTask
 from app.schemas.job import RunSearchRequest
 from app.services.search_service import SearchService
+from app.services.email_service import EmailService
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/tasks", tags=["任务执行"])
 
@@ -20,11 +23,13 @@ def run_search_background(task_ids: list):
 
     每个任务内部已有 try/except 把自己标 failed，外加这里的兜底，
     确保不会出现"僵尸 running"任务。
+    搜索完成后自动发送邮件报告（如果配置了邮件服务）。
     """
     db = SessionLocal()
+    results = []
     try:
         search_service = SearchService(db)
-        search_service.run_existing_tasks(task_ids)
+        results = search_service.run_existing_tasks(task_ids)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -38,6 +43,17 @@ def run_search_background(task_ids: list):
             print(f"[run_search_background] 兜底标记失败: {e2}")
     finally:
         db.close()
+
+    # 发送邮件报告
+    if results and settings.SMTP_USERNAME and settings.SMTP_PASSWORD and settings.EMAIL_TO_LIST:
+        try:
+            email_service = EmailService()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(email_service.send_search_report(results))
+            loop.close()
+        except Exception as e:
+            print(f"[run_search_background] 发送邮件报告失败: {e}")
 
 
 @router.post("/run")

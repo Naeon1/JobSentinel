@@ -218,3 +218,17 @@ export const scheduleApi = {
   /** 直接预览某 Cron 表达式的下次执行时间（前端本地解析，不调后端） */
   // 注：后端 GET /current 已返回 next_run_at，无需单独接口
 }
+
+// ==================== 配置测试API ====================
+
+export const configTestApi = {
+  /** 获取邮件配置状态（不返回密码） */
+  getEmailConfig() {
+    return api.get('/api/email/config')
+  },
+
+  /** 发送测试邮件 */
+  sendTestEmail(data?: { recipients?: string[] }) {
+    return api.post('/api/email/test', data || {})
+  },
+}
