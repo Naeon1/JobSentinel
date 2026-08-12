@@ -237,6 +237,11 @@ export const configTestApi = {
     return api.get('/api/tasks/test-llm')
   },
 
+  /** 轻量 SerpAPI 连通性测试（仅校验 key 有效性 + 一次最小查询，不跑 LLM） */
+  testSerpapi() {
+    return api.get('/api/tasks/test-serpapi')
+  },
+
   /** 运行搜索流水线诊断（规划→搜索→梳理，不写库） */
   testSearch(params?: { company?: string; position?: string; location?: string }) {
     return api.get('/api/tasks/test-search', { params })

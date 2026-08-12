@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Check, Message, Refresh } from '@element-plus/icons-vue'
+import { Message, Refresh, VideoCamera, Search } from '@element-plus/icons-vue'
 import { configTestApi } from '../api'
 
 interface EmailConfigStatus {
@@ -19,11 +19,43 @@ interface ConfigTestResult {
   message: string
 }
 
+interface LlmInfo {
+  provider: string
+  api_base_url: string
+  model_name: string
+  use_anthropic_format: boolean
+  api_key_set: boolean
+}
+
+interface LlmTestState {
+  status: 'idle' | 'loading' | 'success' | 'error'
+  llm_info?: LlmInfo | null
+  response?: string | null
+  error?: string | null
+}
+
+interface SerpapiInfo {
+  provider: string
+  api_key_set: boolean
+  engine: string
+}
+
+interface SerpapiTestState {
+  status: 'idle' | 'loading' | 'success' | 'skipped' | 'error'
+  api_info?: SerpapiInfo | null
+  results_count?: number
+  sample?: Array<{ title: string; link: string; snippet: string }> | null
+  error?: string | null
+}
+
 const emailConfig = ref<EmailConfigStatus | null>(null)
 const emailConfigLoading = ref(false)
 const emailTestLoading = ref(false)
 const testRecipients = ref('')
 const emailTestResult = ref<ConfigTestResult | null>(null)
+
+const llmTest = ref<LlmTestState>({ status: 'idle' })
+const serpapiTest = ref<SerpapiTestState>({ status: 'idle' })
 
 const emailConfigLabel = computed(() => {
   if (!emailConfig.value) return '未检测'
@@ -36,6 +68,22 @@ const defaultRecipientLabel = computed(() => {
 })
 
 const canTestEmail = computed(() => Boolean(emailConfig.value?.configured))
+
+// 模型 API 状态：已配置 key 才视为可用
+const llmConfigured = computed(() => Boolean(llmTest.value.llm_info?.api_key_set))
+const llmStatusLabel = computed(() => {
+  if (llmTest.value.status === 'loading') return '检测中…'
+  if (!llmTest.value.llm_info) return '未检测'
+  return llmConfigured.value ? '已配置 API Key' : '未配置 API Key'
+})
+
+// 搜索 API 状态：已配置 key 才视为可用
+const serpapiConfigured = computed(() => Boolean(serpapiTest.value.api_info?.api_key_set))
+const serpapiStatusLabel = computed(() => {
+  if (serpapiTest.value.status === 'loading') return '检测中…'
+  if (!serpapiTest.value.api_info) return '未检测'
+  return serpapiConfigured.value ? '已配置 SerpAPI Key' : '未配置 SerpAPI Key'
+})
 
 const parseTestRecipients = () => (
   testRecipients.value
@@ -83,6 +131,60 @@ const sendTestEmail = async () => {
   }
 }
 
+// 模型 API 连通性测试
+const testLlm = async () => {
+  llmTest.value = { status: 'loading' }
+  try {
+    const data = await configTestApi.testLlm() as any
+    llmTest.value = {
+      status: data.status === 'success' ? 'success' : 'error',
+      llm_info: data.llm_info || null,
+      response: data.response || null,
+      error: data.error || null,
+    }
+    if (data.status === 'success') {
+      ElMessage.success('模型 API 连通正常')
+    } else {
+      ElMessage.error('模型 API 测试失败')
+    }
+  } catch (error: any) {
+    // test-llm 失败时仍会返回 200 + status:error，不会进这里；仅为兜底
+    llmTest.value = {
+      status: 'error',
+      error: error.response?.data?.detail || error.message || '请求失败',
+    }
+    ElMessage.error('模型 API 请求失败')
+  }
+}
+
+// 搜索 API（SerpAPI）连通性测试
+const testSerpapi = async () => {
+  serpapiTest.value = { status: 'loading' }
+  try {
+    const data = await configTestApi.testSerpapi() as any
+    serpapiTest.value = {
+      status: data.status || 'error',
+      api_info: data.api_info || null,
+      results_count: data.results_count ?? 0,
+      sample: data.sample || null,
+      error: data.error || null,
+    }
+    if (data.status === 'success') {
+      ElMessage.success('搜索 API 连通正常')
+    } else if (data.status === 'skipped') {
+      ElMessage.warning('未配置 SerpAPI Key')
+    } else {
+      ElMessage.error('搜索 API 测试失败')
+    }
+  } catch (error: any) {
+    serpapiTest.value = {
+      status: 'error',
+      error: error.response?.data?.detail || error.message || '请求失败',
+    }
+    ElMessage.error('搜索 API 请求失败')
+  }
+}
+
 onMounted(() => {
   fetchEmailConfig()
 })
@@ -93,7 +195,7 @@ onMounted(() => {
     <!-- 页面标题 -->
     <div class="page-header">
       <h2 class="page-title">配置可用性测试</h2>
-      <p class="page-desc">检查外部服务配置是否可用，当前支持邮件发送测试</p>
+      <p class="page-desc">检查外部服务配置是否可用：邮件发送、模型 API、搜索 API</p>
     </div>
 
     <!-- 邮件发送测试 -->
@@ -191,37 +293,195 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 待接入服务 -->
+    <!-- 模型 API 测试 -->
     <div class="test-card">
       <div class="card-header">
         <div class="card-title-wrap">
           <div class="card-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
+            <el-icon :size="20"><VideoCamera /></el-icon>
           </div>
           <div>
-            <h3 class="card-title">待接入服务</h3>
-            <p class="card-desc">以下服务的连通性测试将在后续版本中添加</p>
+            <h3 class="card-title">模型 API</h3>
+            <p class="card-desc">校验 LLM Provider、Base URL、API Key 配置并进行一次实际连通调用</p>
           </div>
         </div>
       </div>
-      <div class="card-body">
-        <div class="pending-list">
-          <div class="pending-item">
-            <span class="status-dot pending"></span>
-            <span class="service-name">模型 API</span>
-            <span class="service-state pending">待接入</span>
-          </div>
-          <div class="pending-desc">后续接入 LLM Provider、Base URL、API Key 和模型连通性测试</div>
 
-          <div class="pending-item">
-            <span class="status-dot pending"></span>
-            <span class="service-name">搜索 API</span>
-            <span class="service-state pending">待接入</span>
+      <div class="card-body">
+        <div class="service-info">
+          <div class="info-row">
+            <span
+              class="status-dot"
+              :class="{
+                ok: llmTest.status === 'success',
+                fail: llmTest.status === 'error' || (llmTest.llm_info && !llmConfigured),
+                pending: llmTest.status === 'loading' || !llmTest.llm_info,
+              }"
+            ></span>
+            <span class="service-name">模型服务状态</span>
+            <span
+              class="service-state"
+              :class="{
+                ok: llmTest.status === 'success',
+                fail: llmTest.status === 'error' || (llmTest.llm_info && !llmConfigured),
+                pending: llmTest.status === 'loading' || !llmTest.llm_info,
+              }"
+            >
+              {{ llmStatusLabel }}
+            </span>
+            <button
+              type="button"
+              class="icon-btn"
+              title="刷新模型配置"
+              @click="testLlm"
+              :disabled="llmTest.status === 'loading'"
+            >
+              <el-icon :size="16"><Refresh /></el-icon>
+            </button>
           </div>
-          <div class="pending-desc">后续接入 SerpAPI 等搜索服务的密钥校验</div>
+          <div class="meta-rows">
+            <span>Provider：{{ llmTest.llm_info?.provider || '—' }}</span>
+            <span>Base URL：{{ llmTest.llm_info?.api_base_url || '—' }}</span>
+            <span>模型：{{ llmTest.llm_info?.model_name || '—' }}</span>
+            <span>API Key：{{ llmTest.llm_info?.api_key_set ? '已配置' : '—' }}</span>
+          </div>
+        </div>
+
+        <div class="test-panel">
+          <div class="input-tip" style="margin-top:0;margin-bottom:4px">
+            点击下方按钮向 LLM 发送一次最小请求（"你好，请回复'连接成功'"），验证配置与连通性。
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="test-btn"
+              @click="testLlm"
+              :disabled="llmTest.status === 'loading'"
+            >
+              <el-icon :size="16"><VideoCamera /></el-icon>
+              {{ llmTest.status === 'loading' ? '测试中...' : '测试模型 API' }}
+            </button>
+          </div>
+
+          <el-alert
+            v-if="llmTest.status === 'success'"
+            class="test-result"
+            type="success"
+            title="模型 API 连通正常"
+            :description="llmTest.response ? `模型回复：${llmTest.response}` : 'LLM 已成功响应'"
+            show-icon
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="llmTest.status === 'error'"
+            class="test-result"
+            type="error"
+            title="模型 API 测试失败"
+            :description="llmTest.error || '请检查 LLM_API_KEY / LLM_API_BASE_URL / LLM_MODEL_NAME 配置'"
+            show-icon
+            :closable="false"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 搜索 API 测试 -->
+    <div class="test-card">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">
+            <el-icon :size="20"><Search /></el-icon>
+          </div>
+          <div>
+            <h3 class="card-title">搜索 API</h3>
+            <p class="card-desc">校验 SerpAPI Key 是否配置有效，进行一次最小搜索查询连通验证</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="service-info">
+          <div class="info-row">
+            <span
+              class="status-dot"
+              :class="{
+                ok: serpapiTest.status === 'success',
+                fail: serpapiTest.status === 'error' || (serpapiTest.api_info && !serpapiConfigured),
+                pending: serpapiTest.status === 'loading' || !serpapiTest.api_info,
+              }"
+            ></span>
+            <span class="service-name">搜索服务状态</span>
+            <span
+              class="service-state"
+              :class="{
+                ok: serpapiTest.status === 'success',
+                fail: serpapiTest.status === 'error' || (serpapiTest.api_info && !serpapiConfigured),
+                pending: serpapiTest.status === 'loading' || !serpapiTest.api_info,
+              }"
+            >
+              {{ serpapiStatusLabel }}
+            </span>
+            <button
+              type="button"
+              class="icon-btn"
+              title="刷新搜索配置"
+              @click="testSerpapi"
+              :disabled="serpapiTest.status === 'loading'"
+            >
+              <el-icon :size="16"><Refresh /></el-icon>
+            </button>
+          </div>
+          <div class="meta-rows">
+            <span>服务商：{{ serpapiTest.api_info?.provider || '—' }}</span>
+            <span>引擎：{{ serpapiTest.api_info?.engine || '—' }}</span>
+            <span>API Key：{{ serpapiTest.api_info?.api_key_set ? '已配置' : '—' }}</span>
+            <span v-if="serpapiTest.status === 'success'">命中：{{ serpapiTest.results_count ?? 0 }} 条</span>
+          </div>
+        </div>
+
+        <div class="test-panel">
+          <div class="input-tip" style="margin-top:0;margin-bottom:4px">
+            点击下方按钮执行一次最小查询（仅 1 条结果），验证 SerpAPI Key 是否有效。不调用 LLM、不写数据库。
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="test-btn"
+              @click="testSerpapi"
+              :disabled="serpapiTest.status === 'loading'"
+            >
+              <el-icon :size="16"><Search /></el-icon>
+              {{ serpapiTest.status === 'loading' ? '测试中...' : '测试搜索 API' }}
+            </button>
+          </div>
+
+          <el-alert
+            v-if="serpapiTest.status === 'success'"
+            class="test-result"
+            type="success"
+            title="搜索 API 连通正常"
+            :description="serpapiTest.sample && serpapiTest.sample.length > 0 ? `样例结果：${serpapiTest.sample[0].title}` : 'SerpAPI 已成功返回结果'"
+            show-icon
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="serpapiTest.status === 'skipped'"
+            class="test-result"
+            type="warning"
+            title="未配置 SerpAPI Key"
+            :description="serpapiTest.error || '请在 .env 中设置 SERPAPI_KEY'"
+            show-icon
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="serpapiTest.status === 'error'"
+            class="test-result"
+            type="error"
+            title="搜索 API 测试失败"
+            :description="serpapiTest.error || '请检查 SERPAPI_KEY 是否正确或是否已耗尽免费额度'"
+            show-icon
+            :closable="false"
+          />
         </div>
       </div>
     </div>
@@ -477,29 +737,5 @@ onMounted(() => {
 
 .test-result {
   margin-top: 16px;
-}
-
-/* ── 待接入列表 ── */
-.pending-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pending-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #fafbfc;
-  border: 1px solid var(--js-card-border);
-  border-radius: var(--js-radius-md);
-}
-
-.pending-desc {
-  font-size: 12px;
-  color: var(--js-text-tertiary);
-  padding: 0 16px 12px 16px;
-  margin-top: -4px;
 }
 </style>

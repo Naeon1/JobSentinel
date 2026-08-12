@@ -139,6 +139,50 @@ async def test_search_pipeline(
         }
 
 
+@router.get("/tasks/test-serpapi")
+async def test_serpapi_connection():
+    """轻量搜索 API（SerpAPI）连通性测试。
+
+    只发送一条最小查询，校验 SERPAPI_KEY 是否有效、能否成功拿到搜索结果，
+    不调用 LLM、不写数据库、不跑完整流水线，供「配置可用性测试」页面快速验证。
+    """
+    import traceback
+
+    from app.core.config import settings
+
+    api_info = {
+        "provider": "SerpAPI",
+        "api_key_set": bool(settings.SERPAPI_KEY),
+        "engine": "google",
+    }
+
+    if not settings.SERPAPI_KEY:
+        return {
+            "status": "skipped",
+            "api_info": api_info,
+            "error": "未配置 SERPAPI_KEY，请在 .env 中设置 SERPAPI_KEY",
+        }
+
+    try:
+        from app.tools.search_tools import serpapi_search
+
+        results = serpapi_search("JobSentinel connectivity test", num_results=1)
+
+        return {
+            "status": "success",
+            "api_info": api_info,
+            "results_count": len(results),
+            "sample": results[:1],
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "api_info": api_info,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+        }
+
+
 # ==================== 招聘信息接口 ====================
 
 @router.get("/jobs/", response_model=JobListingListResponse)
