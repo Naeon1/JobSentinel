@@ -12,6 +12,7 @@ import {
   Refresh,
   DataLine,
   Message,
+  Monitor,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -27,6 +28,7 @@ const menuItems = [
   { path: '/tasks', title: '任务历史', icon: DataLine },
   { path: '/executions', title: '执行过程', icon: Odometer },
   { path: '/email-logs', title: '邮件通知', icon: Message },
+  { path: '/config-test', title: '配置测试', icon: Monitor },
   { path: '/settings', title: '系统设置', icon: Setting },
 ]
 
@@ -38,7 +40,7 @@ const navGroups = [
   { label: '监测', items: [menuItems[0], menuItems[3]] },
   { label: '配置', items: [menuItems[1], menuItems[2]] },
   { label: '运行', items: [menuItems[4], menuItems[5], menuItems[6]] },
-  { label: '系统', items: [menuItems[7]] },
+  { label: '系统', items: [menuItems[7], menuItems[8]] },
 ]
 
 // 页面标题

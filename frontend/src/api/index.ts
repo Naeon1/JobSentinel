@@ -231,6 +231,16 @@ export const configTestApi = {
   sendTestEmail(data?: { recipients?: string[] }) {
     return api.post('/api/email/test', data || {})
   },
+
+  /** 测试 LLM 连通性（返回 llm_info 与回复，或 error） */
+  testLlm() {
+    return api.get('/api/tasks/test-llm')
+  },
+
+  /** 运行搜索流水线诊断（规划→搜索→梳理，不写库） */
+  testSearch(params?: { company?: string; position?: string; location?: string }) {
+    return api.get('/api/tasks/test-search', { params })
+  },
 }
 
 // ==================== 邮件通知记录API ====================

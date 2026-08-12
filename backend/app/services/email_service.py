@@ -191,6 +191,9 @@ class EmailService:
     def send_test_email(self, to: List[str]) -> Tuple[bool, str]:
         """发送测试邮件（同步方法）。
 
+        发送的是一封与真实搜索报告同模板的"示例报告"，让收件人能预览
+        实际收到邮件的样式与内容，而不仅仅是一句"测试邮件"。
+
         Args:
             to: 收件人列表
 
@@ -201,17 +204,37 @@ class EmailService:
             return False, "SMTP 未配置，请检查 SMTP_USERNAME 和 SMTP_PASSWORD"
 
         try:
-            subject = f"[{settings.APP_NAME}] 邮件配置测试"
-            html = f"""
-            <html>
-            <body>
-                <h2>{settings.APP_NAME} 邮件配置测试</h2>
-                <p>这是一封测试邮件，用于验证邮件配置是否正确。</p>
-                <p>发送时间：{datetime.now(CST).strftime('%Y-%m-%d %H:%M:%S')}</p>
-                <p>如果您收到此邮件，说明邮件服务配置正确。</p>
-            </body>
-            </html>
-            """
+            # 构造示例任务结果，结构与 SearchService._execute_task 返回值一致
+            sample_results = [
+                {
+                    "task_id": "sample-001",
+                    "status": "completed",
+                    "jobs_found": 6,
+                    "company_name": "字节跳动",
+                    "position_title": "前端工程师",
+                },
+                {
+                    "task_id": "sample-002",
+                    "status": "completed",
+                    "jobs_found": 4,
+                    "company_name": "腾讯",
+                    "position_title": "后端工程师",
+                },
+                {
+                    "task_id": "sample-003",
+                    "status": "failed",
+                    "jobs_found": 0,
+                    "company_name": "阿里巴巴",
+                    "position_title": "算法工程师",
+                    "error": "搜索引擎 API 调用超时（示例错误信息）",
+                },
+            ]
+
+            # 复用真实报告的模板渲染逻辑，并在主题中标注为示例
+            subject, html = self._build_email_content(sample_results)
+            sample_tag = "【示例】"
+            if sample_tag not in subject:
+                subject = f"{sample_tag}{subject}"
 
             msg = MIMEMultipart("alternative")
             msg["From"] = settings.EMAIL_FROM or settings.SMTP_USERNAME
@@ -220,7 +243,7 @@ class EmailService:
             msg.attach(MIMEText(html, "html", "utf-8"))
 
             self._send_smtp(msg, to)
-            return True, f"测试邮件发送成功，收件人: {', '.join(to)}"
+            return True, f"测试邮件（示例报告）发送成功，收件人: {', '.join(to)}"
         except Exception as e:
             return False, f"发送失败: {str(e)}"
 

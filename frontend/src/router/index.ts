@@ -59,6 +59,12 @@ const router = createRouter({
       component: () => import('../views/Settings.vue'),
       meta: { title: '系统设置' },
     },
+    {
+      path: '/config-test',
+      name: 'ConfigTest',
+      component: () => import('../views/ConfigTest.vue'),
+      meta: { title: '配置测试' },
+    },
   ],
 })
 
