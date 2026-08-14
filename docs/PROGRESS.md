@@ -9,12 +9,12 @@
 | 阶段 | 状态 | 进度 | 开始日期 | 完成日期 | 备注 |
 |------|------|------|---------|---------|------|
 | 阶段一：项目初始化 | ✅ 已完成 | 100% | 2026-07-20 | 2026-07-20 | 代码框架已完成 |
-| 阶段二：后端核心 | ⚠️ 基本完成 | 95% | 2026-07-20 | - | 定时任务已接入，仅邮件未实现 |
-| 阶段三：前端开发 | ⚠️ 基本完成 | 92% | 2026-07-20 | - | 7页面已搭好，已对接API；缺导出 |
+| 阶段二：后端核心 | ✅ 已完成 | 100% | 2026-07-20 | 2026-08-14 | 定时任务与邮件服务均已实现 |
+| 阶段三：前端开发 | ⚠️ 基本完成 | 92% | 2026-07-20 | - | 9 页面已搭好，已对接 API；缺导出 |
 | 阶段四：部署上线 | ⏳ 待开始 | 0% | - | - | - |
 | 阶段五：优化完善 | ⏳ 待开始 | 0% | - | - | - |
 
-> 说明：本文档已于 2026-07-31 再次根据实际代码核对。本次核对主要更新：定时任务调度器已完整接入（误记为未实现更正）、前端新增"执行过程"页（6→7 页面）、邮件服务仍为空白。上次核对日期为 2026-07-27。
+> 说明：本文档已于 2026-08-14 再次根据实际代码核对。本次核对主要更新：邮件服务已实现（含 EmailLog 模型、`email_service.py`、API `/api/email/*` 与 `/api/email-logs/*`、HTML 邮件模板、邮件通知页）、前端新增「邮件通知」与「配置测试」两页（7→9 页面，9 路由）、API 模块增至 7 个（companies/positions/jobs/tasks/schedules/email/email_logs）。上次核对日期为 2026-07-31。
 
 **图例**：
 - ⏳ 待开始
@@ -69,7 +69,7 @@ _暂无_
 
 ## 阶段二：后端核心功能
 
-**状态**：⚠️ 基本完成（仅邮件服务待实现）
+**状态**：✅ 已完成（定时任务 + 邮件服务均已实现）
 
 ### 任务进度
 
@@ -78,9 +78,12 @@ _暂无_
 - [x] 实现PositionConfig模型
 - [x] 实现SearchTask模型
 - [x] 实现JobListing模型
+- [x] 实现EmailLog模型（邮件发送历史记录）
 - [x] 实现公司管理API
 - [x] 实现职位配置API
 - [x] 实现招聘信息API
+- [x] 实现邮件配置查询与测试 API（`/api/email/config`、`/api/email/test`）
+- [x] 实现邮件日志 API（`/api/email-logs/`，含筛选/分页/删除）
 
 #### 2.2 Agent核心实现
 - [x] 实现搜索工具
@@ -97,7 +100,13 @@ _暂无_
 - [x] 调度器与定时任务 API 联动（`/api/schedules/current` 修改 cron/启停 → `reschedule()` 热更新，含 cron 合法性校验）
 - [ ] 持久化 cron/启停到 Schedule 表或 .env（当前 `update_current_schedule` 仅改内存 settings，重启后回退默认值）
 - [x] 实现仪表盘API
-- [ ] 实现邮件服务（仅有 config 配置项，无 `email_service.py` 发送实现；`requirements.txt` 已含邮件相关依赖）
+- [x] 实现邮件服务（`app/services/email_service.py` + `app/templates/email/search_report.html` Jinja2 模板）
+  - [x] SMTP 发送（465 SSL / 587 STARTTLS 自适应）
+  - [x] 配置缺失兜底（未配 SMTP_USERNAME/PASSWORD 或 EMAIL_TO_LIST 时跳过而非抛错）
+  - [x] 测试邮件接口（`send_test_email` 复用真实报告模板渲染示例报告）
+  - [x] EmailLog 历史落库（成功 / 失败 / 跳过 三态均记录）
+  - [x] 接入手动触发主链路（`api/tasks.py:run_search_background` 完成后调用）
+  - [x] 接入定时触发主链路（`scheduler/__init__.py:_send_email_report` 触发后调用）
 
 ### 遇到的问题
 
@@ -107,6 +116,8 @@ _暂无_
 
 - 定时任务调度器复用 `SearchService.prepare_batch_tasks + run_existing_tasks` 两段式流程，产出的 `SearchTask` 记录与手动触发同构，前端无需区分来源。
 - `/api/schedules/current` 的 PUT 仅修改内存 `settings`，重启后恢复默认（`SCHEDULE_CRON="0 9 * * *"` / `SCHEDULE_ENABLED=False`），持久化仍为待办。
+- 邮件服务在搜索主链路的两处触发点（手动 + 定时）都用独立 `SessionLocal` 写 EmailLog，主线程的 db 已关闭也不影响落库。
+- 邮件服务发送失败 / 跳过均不抛异常，仅写 EmailLog + print 日志，绝不阻塞搜索任务。
 
 ---
 
@@ -117,7 +128,7 @@ _暂无_
 ### 任务进度
 
 #### 3.1 项目配置和基础组件
-- [x] 配置路由（vue-router，7 个路由 + 守卫设置页面标题，新增"执行过程"页）
+- [x] 配置路由（vue-router，9 个路由 + 守卫设置页面标题，含"邮件通知"页 `/email-logs` 与"配置测试"页 `/config-test`）
 - [x] 配置Axios（拦截器 + 错误统一 ElMessage 提示）
 - [x] 配置Pinia状态管理（框架已建，目前业务直接用 ref）
 - [x] 实现Layout布局组件（AppLayout：侧边栏可折叠菜单 + 顶栏）
@@ -133,6 +144,8 @@ _暂无_
 - [x] 实现任务历史页面（任务列表 + 状态筛选）
 - [x] 实现执行过程页面（`ExecutionDetail.vue`，任务摘要 + 执行步骤详情）
 - [x] 实现系统设置页面（定时任务 cron 配置 + API 密钥只读提示）
+- [x] 实现邮件通知页面（`EmailLog.vue`，邮件发送历史 + 状态/触发来源筛选 + 错误信息展开）
+- [x] 实现配置测试页面（`ConfigTest.vue`，LLM / SerpAPI / SMTP 三类外部服务连通性测试一站式页面）
 - [ ] 实现导出功能（无导出按钮/接口；仅在 Settings 页文案中提及"数据导出"）
 
 ### 遇到的问题
@@ -233,6 +246,28 @@ _暂无_
 
 ## 📝 开发日志
 
+### 2026-08-14（核对更新）
+
+**完成内容**：
+- 再次核对前后端代码实现，重点核实邮件服务现状与前端页面/路由清单
+- 发现并更新：邮件服务此前误记为"未实现"，实则已完整实现（`email_service.py` + EmailLog 模型 + `/api/email/*` + `/api/email-logs/*` + Jinja2 HTML 模板 + 手动/定时双触发点接入）
+- 前端新增"邮件通知"页（`EmailLog.vue`，路由 `/email-logs`）与"配置测试"页（`ConfigTest.vue`，路由 `/config-test`），页面总数由 7 增至 9
+
+**实际现状（据实）**：
+- 后端：7 个 API 模块（companies/positions/jobs/tasks/schedules/email/email_logs）全部实现；搜索 Agent（SerpAPI→LLM提取）完整可跑；仪表盘统计、任务历史、招聘信息多条件筛选均已对接
+- 后端已有：定时任务调度器（`app/scheduler/__init__.py`，BackgroundScheduler + init/reschedule/shutdown/get_next_run_time，已在 `app/main.py` lifespan 中启停；`/api/schedules/current` 改 cron/启停后热生效，含 cron 合法性校验）；邮件服务（`app/services/email_service.py` + `app/templates/email/search_report.html`，SMTP 异步发送 + EmailLog 三态落库 + 测试邮件接口，手动/定时双触发点均接入）
+- 后端缺：定时任务配置的持久化（PUT 仅改内存 settings，重启回退）
+- 前端：9 个页面（仪表盘 / 公司管理 / 职位配置 / 招聘信息 / 任务历史 / 执行过程 / 邮件通知 / 系统设置 / 配置测试）+ 路由 + axios 封装 + Element Plus 全部就绪；缺真实导出功能
+- 部署：未开始
+- 数据库：实际用本地 SQLite，未用 Supabase；Alembic 未生成迁移（靠 init_db 自动建表）
+
+**下一步建议**：
+1. 定时任务配置持久化（写 Schedule 表或 .env，避免重启回退）
+2. 跑通一次完整链路验证（配好 SERPAPI_KEY + LLM + SMTP，手动触发一次搜索并在"执行过程"页查看详情，到"邮件通知"页确认邮件落库）
+3. 部署上线（前后端分别上 Railway / Vercel）
+
+---
+
 ### 2026-07-31（核对更新）
 
 **完成内容**：
@@ -294,7 +329,6 @@ _暂无_
 - 配置文档：LLM_CONFIG.md
 
 **待完成**：
-- 注册Supabase账号并配置数据库
 - 安装前端依赖（npm install）
 - 实现定时任务调度器
 - 实现邮件服务
@@ -328,26 +362,24 @@ _暂无_
 ### 优先级高
 
 1. 跑通一次完整链路验证
-   - [ ] 在 `.env` 配好 `SERPAPI_KEY` 和 `LLM_API_KEY` / `LLM_MODEL_NAME`
+   - [ ] 在 `.env` 配好 `SERPAPI_KEY`、`LLM_API_KEY` / `LLM_MODEL_NAME`、`SMTP_USERNAME` / `SMTP_PASSWORD` / `EMAIL_TO_LIST`
    - [ ] 启动后端 `python run.py`，访问 `/api/tasks/test-llm` 验 LLM
    - [ ] 访问 `/api/tasks/test-search` 验整条搜索流水线
-   - [ ] 在仪表盘点"立即执行搜索"并到"招聘信息"页确认结果入库
+   - [ ] 访问 `/api/email/test`（POST）验 SMTP 链路
+   - [ ] 在仪表盘点"立即执行搜索"，到"招聘信息"页确认结果入库
    - [ ] 到"执行过程"页（`/executions`）查看任务执行步骤详情
+   - [ ] 到"邮件通知"页（`/email-logs`）确认本次触发的邮件落库（成功 / 失败 / 跳过 三态）
 
-2. 实现邮件服务
-   - [ ] 新建 `app/services/email_service.py`
-   - [ ] 搜索任务完成后，汇总新增招聘数发邮件到 `EMAIL_TO_LIST`
-
-3. 定时任务配置持久化
+2. 定时任务配置持久化
    - [ ] 让 Settings 页的 cron/启停修改能持久化（写 Schedule 表或 .env），当前仅改内存、重启回退
 
 ### 优先级中
 
-4. 功能补全
+3. 功能补全
    - [ ] 前端"招聘信息"页加导出（CSV/Excel）
    - [x] ~~taskApi.list 返回的 `position_title` 字段~~（后端已补全：模型有列、创建任务时写入、`to_dict` 返回）
 
-5. 部署相关
+4. 部署相关
    - [ ] 后端 Dockerfile 已有，编写 docker-compose 联调
    - [ ] 后端部署 Railway / 前端部署 Vercel
 

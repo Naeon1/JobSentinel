@@ -1,6 +1,8 @@
 # 大模型配置指南
 
-本文档说明如何配置自定义API地址和Key，支持多种大模型服务。
+本文档说明如何配置自定义 API 地址和 Key，支持多种大模型服务。
+配合 [README.md](../README.md) 的快速开始食用，本文聚焦"如何把 LLM 跑起来"。
+系统整体处理流程请看 [PIPELINE.md](PIPELINE.md)，各功能模块技术细节请看 [FEATURES.md](FEATURES.md)。
 
 ## 配置项说明
 
