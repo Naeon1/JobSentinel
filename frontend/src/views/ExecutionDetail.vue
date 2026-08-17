@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Delete } from '@element-plus/icons-vue'
@@ -157,6 +157,38 @@ const phaseColor = (key: string) => {
   }
   return colors[key] || '#64748b'
 }
+
+// ---- 阶段折叠状态 ----
+// 默认收起；expandedMap 记录用户手动展开的项，命中即展开
+// 用 Map<taskId, Set<phaseKey>> 记忆展开状态，避免响应式数组的复杂 key 管理
+const expandedMap = reactive(new Map<string, Set<string>>())
+
+function isPhaseCollapsed(taskId: string, phaseKey: string): boolean {
+  return !expandedMap.get(taskId)?.has(phaseKey)
+}
+
+function togglePhase(taskId: string, phaseKey: string) {
+  let set = expandedMap.get(taskId)
+  if (!set) {
+    set = new Set()
+    expandedMap.set(taskId, set)
+  }
+  if (set.has(phaseKey)) set.delete(phaseKey)
+  else set.add(phaseKey)
+}
+
+// ---- 任务级折叠状态：点击任务标题栏展开/收起整张卡的全部阶段 ----
+// 默认收起；taskExpanded 记录展开的任务 id
+const taskExpanded = reactive(new Set<string>())
+
+function isTaskCollapsed(taskId: string): boolean {
+  return !taskExpanded.has(taskId)
+}
+
+function toggleTask(taskId: string) {
+  if (taskExpanded.has(taskId)) taskExpanded.delete(taskId)
+  else taskExpanded.add(taskId)
+}
 </script>
 
 <template>
@@ -191,8 +223,8 @@ const phaseColor = (key: string) => {
       :key="task.id"
       class="task-card"
     >
-      <!-- 卡片头部 -->
-      <div class="task-header">
+      <!-- 卡片头部：点击展开/收起卡内全部阶段 -->
+      <div class="task-header" @click="toggleTask(task.id)">
         <div class="header-left">
           <el-tag :type="statusType(task.status) as any" size="small" round class="status-tag">
             {{ statusText(task.status) }}
@@ -201,7 +233,7 @@ const phaseColor = (key: string) => {
         </div>
         <div class="header-right">
           <!-- 进行中进度 -->
-          <div v-if="ACTIVE.includes(task.status)" class="progress-wrap">
+          <div v-if="ACTIVE.includes(task.status)" class="progress-wrap" @click.stop>
             <el-progress
               :percentage="task.progress || 0"
               :stroke-width="6"
@@ -210,7 +242,7 @@ const phaseColor = (key: string) => {
             />
           </div>
           <!-- 完成跳转 -->
-          <div v-if="task.jobs_found && task.status === 'completed'" class="result-btn">
+          <div v-if="task.jobs_found && task.status === 'completed'" class="result-btn" @click.stop>
             <button class="view-results-btn" @click="router.push('/jobs')">
               {{ task.jobs_found }} 条结果
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -218,14 +250,19 @@ const phaseColor = (key: string) => {
               </svg>
             </button>
           </div>
-          <button class="delete-btn" @click="deleteTask(task)">
+          <button class="delete-btn" @click.stop="deleteTask(task)">
             <el-icon :size="14"><Delete /></el-icon>
           </button>
+          <span class="task-arrow" :class="{ 'is-collapsed': isTaskCollapsed(task.id) }">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </span>
         </div>
       </div>
 
       <!-- 错误信息 -->
-      <div v-if="task.status === 'failed' && task.error_message" class="error-banner">
+      <div v-if="task.status === 'failed' && task.error_message" v-show="!isTaskCollapsed(task.id)" class="error-banner">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
@@ -233,34 +270,44 @@ const phaseColor = (key: string) => {
       </div>
 
       <!-- 各阶段可折叠面板 -->
-      <div class="phases">
+      <div class="phases" v-show="!isTaskCollapsed(task.id)">
         <div
           v-for="block in groupPhases(task)"
           :key="block.key"
           class="phase-item"
         >
-          <div class="phase-header">
+          <div class="phase-header" @click="togglePhase(task.id, block.key)">
             <div class="phase-title-wrap">
               <span class="phase-icon">{{ block.icon }}</span>
               <span class="phase-title" :style="{ color: phaseColor(block.key) }">{{ block.title }}</span>
             </div>
-            <div class="phase-tags">
+            <div class="phase-header-right">
+              <div class="phase-tags">
+                <span
+                  v-if="block.entries.some(e => e.status === 'error')"
+                  class="phase-tag error"
+                >失败</span>
+                <span
+                  v-else-if="block.entries.some(e => e.status === 'done')"
+                  class="phase-tag success"
+                >完成</span>
+                <span
+                  v-else-if="block.entries.some(e => e.status === 'start')"
+                  class="phase-tag processing"
+                >执行中</span>
+              </div>
               <span
-                v-if="block.entries.some(e => e.status === 'error')"
-                class="phase-tag error"
-              >失败</span>
-              <span
-                v-else-if="block.entries.some(e => e.status === 'done')"
-                class="phase-tag success"
-              >完成</span>
-              <span
-                v-else-if="block.entries.some(e => e.status === 'start')"
-                class="phase-tag processing"
-              >执行中</span>
+                class="phase-arrow"
+                :class="{ 'is-collapsed': isPhaseCollapsed(task.id, block.key) }"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </span>
             </div>
           </div>
 
-          <div class="phase-content">
+          <div class="phase-content" v-show="!isPhaseCollapsed(task.id, block.key)">
             <!-- 通用 message -->
             <div v-for="(entry, ei) in block.entries" :key="ei" class="log-entry">
               <p class="log-msg">{{ entry.message }}</p>
@@ -536,6 +583,13 @@ const phaseColor = (key: string) => {
   border-bottom: 1px solid var(--js-card-border);
   gap: 16px;
   flex-wrap: wrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--js-transition);
+}
+
+.task-header:hover {
+  background: var(--js-page-bg);
 }
 
 .header-left {
@@ -558,6 +612,18 @@ const phaseColor = (key: string) => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.task-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--js-text-tertiary);
+  transition: transform var(--js-transition);
+}
+
+.task-arrow.is-collapsed {
+  transform: rotate(-90deg);
 }
 
 .progress-wrap {
@@ -635,6 +701,30 @@ const phaseColor = (key: string) => {
   padding: 12px 16px;
   background: var(--js-page-bg);
   cursor: pointer;
+  user-select: none;
+  transition: background var(--js-transition);
+}
+
+.phase-header:hover {
+  background: var(--js-card-bg);
+}
+
+.phase-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.phase-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--js-text-tertiary);
+  transition: transform var(--js-transition);
+}
+
+.phase-arrow.is-collapsed {
+  transform: rotate(-90deg);
 }
 
 details {
