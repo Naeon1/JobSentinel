@@ -25,6 +25,52 @@ JobSentinel 维护一份「公司 × 职位」的监测清单，按需手动触�
 
 ---
 
+## 📸 界面截图（部分示例）
+
+> 以下为部分界面截图示意，完整功能页面包括：仪表盘 / 公司管理 / 职位配置 / 招聘信息 / 任务历史 / 执行过程 / 邮件通知 / 系统设置 / 配置测试。
+
+### 仪表盘
+
+监控总览、统计卡片、一键触发搜索入口。
+
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="仪表盘" />
+</p>
+
+### 招聘信息
+
+多条件筛选、分页检索在招岗位。
+
+<p align="center">
+  <img src="docs/images/jobs.png" alt="招聘信息" />
+</p>
+
+### 执行过程
+
+三阶段任务执行的分步复盘。
+
+<p align="center">
+  <img src="docs/images/executions.png" alt="执行过程" />
+</p>
+
+---
+
+## 🧩 使用功能一览
+
+| 功能区 | 你可以在里面做什么 |
+|--------|-------------------|
+| 仪表盘 | 查看监测的公司数、职位数、今日新增、任务数总览；点「立即执行」一键发起搜索 |
+| 公司管理 | 添加、编辑、删除要持续监测的目标公司，维护其官网与招聘页地址 |
+| 职位配置 | 为各公司配置要盯的职位（关键词、排除词、目标城市），可按需启用或停用 |
+| 招聘信息 | 多条件筛选、分页浏览已采集到的在招岗位，一键跳转原始招聘链接 |
+| 任务历史 | 查看手动 / 定时触发的所有搜索任务及各自的完成状态 |
+| 执行过程 | 展开单个任务，可以看到系统都做了什么工作，逐步复盘「规划 → 搜索 → 梳理」三个阶段及每一步的原始输出 |
+| 系统设置 | 配置定时任务的运行时间与启停、SMTP 邮箱参数，保存后实时生效 |
+| 邮件通知 | 查看每次搜索完成后的邮件报告发送记录（成功 / 失败 / 跳过） |
+| 配置测试 | 无需跑真实任务，逐个验证 LLM / SerpAPI / SMTP 三个外部服务是否连通 |
+
+---
+
 ## 🏗️ 项目架构
 
 ```
@@ -110,8 +156,10 @@ cp .env.example .env
 编辑 `backend/.env`，至少填入以下三项：
 
 ```env
-DATABASE_URL=sqlite:///./jobsentinel.db
+DATABASE_URL=sqlite:///./jobsentinel.db（默认，可不动）
+
 SERPAPI_KEY=你的serpapi_key
+
 LLM_API_KEY=你的llm_api_key
 LLM_API_BASE_URL=https://api.openai.com/v1   # 或 Ollama/vLLM/第三方代理地址
 LLM_MODEL_NAME=gpt-4o                         # 或 qwen2:7b / llama3:8b / claude-3-5-sonnet-20241022
@@ -122,6 +170,7 @@ LLM_MODEL_NAME=gpt-4o                         # 或 qwen2:7b / llama3:8b / claud
 ### 2. 启动后端
 
 ```bash
+cd backend
 python run.py
 # 服务运行在 http://localhost:8000
 # API 文档：http://localhost:8000/docs
@@ -224,7 +273,6 @@ EMAIL_TO_LIST=["recipient1@example.com"]
 
 ## 📋 现状与路线图
 
-**已完成**
 - 后端 7 个 API 模块（companies / positions / jobs / tasks / schedules / email / email_logs）
 - LLM 主导的三阶段搜索流水线（含任务执行可视化 steps_log）
 - APScheduler 定时任务调度（含热更新 + cron 合法性校验）
@@ -232,12 +280,6 @@ EMAIL_TO_LIST=["recipient1@example.com"]
 - 仪表盘统计 + 多条件招聘信息检索 + 任务历史
 - 前端 9 个页面 + 路由 + axios 封装 + Element Plus
 - 「配置测试」页：一站式验证 LLM / SerpAPI / SMTP 三类外部服务连通性
-
-**待完善**
-- [ ] 定时任务配置持久化：当前「系统设置」页修改仅改内存，重启后回退默认值（需写入 Schedule 表或 `.env`）
-- [ ] 招聘信息导出：CSV / Excel
-- [ ] API 鉴权、CORS 收敛、请求限流等安全加固
-- [ ] 搜索结果去重 / 薪资标准化 / 技能标签自动提取等数据质量优化
 
 ---
 
