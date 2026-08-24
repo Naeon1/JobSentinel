@@ -167,6 +167,32 @@ LLM_MODEL_NAME=gpt-4o                         # 或 qwen2:7b / llama3:8b / claud
 
 > 大模型配置的完整说明见 [docs/LLM_CONFIG.md](docs/LLM_CONFIG.md)。
 
+#### （可选）配置邮件通知
+
+邮件通知**不是必填项**——即使不配置，搜索功能也完全正常，只是搜索完成后不会自动收到邮件报告。想开启的话，在 `backend/.env` 中追加以下配置：
+
+```env
+SMTP_HOST=smtp.gmail.com                                     		# SMTP 服务器地址
+SMTP_PORT=587                                             			# 端口
+SMTP_USERNAME=your-email@gmail.com                           		# 发件邮箱地址
+SMTP_PASSWORD=your-app-password                            			# 授权码
+EMAIL_FROM=your-email@gmail.com                              		# 发件人显示邮箱（通常与 SMTP_USERNAME 相同）
+EMAIL_TO_LIST=["recipient1@example.com", "recipient2@example.com"]  # 接收报告的收件人，可填多个
+
+```
+
+以 **QQ 邮箱**为例，找到上述信息的步骤如下：
+
+1. 打开浏览器登录 QQ 邮箱网页版（**mail.qq.com**）。
+2. 进入「**设置 → 账号**」。
+3. 向下滚动到「**POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV 服务**」区域，找到「**IMAP/SMTP 服务**」，点击「**开启**」。
+4. 按提示用绑定的手机号**发送短信验证**，验证通过后，页面会弹出一串 **16 位授权码**。
+5. 把这串「授权码」填入上面的 `SMTP_PASSWORD`——它**不是**你的 QQ 登录密码。
+6. `SMTP_HOST` 填 `smtp.qq.com`；`SMTP_PORT` 用 `465`（SSL）最稳定，网络环境对 465 不友好时也可用 `587`。
+7. `SMTP_USERNAME` / `EMAIL_FROM` 填完整的发件地址（如 `123456@qq.com`）；`EMAIL_TO_LIST` 填想接收报告的一个或多个邮箱。
+
+配置完成后，可在「配置测试」页点「发送测试邮件」，或在前端「系统设置」页保存配置，验证邮件链路是否通畅。
+
 ### 2. 启动后端
 
 ```bash
