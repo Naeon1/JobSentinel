@@ -1,4 +1,10 @@
+<p align="center">
+  <img src="docs/images/LOGO.png" alt="JobSentinel Logo" width="260" style="border-radius: 50%;" />
+</p>
+
 # JobSentinel
+
+<p align="center"><em>你的专属<b>「求职雷达」</b>：AI 自动扫描目标公司和岗位的招聘动态，新机会一出现就第一时间通知你。</em></p>
 
 > 基于 AI 的招聘信息自动搜索与监测系统 —— 让大模型主导搜索策略，自动监测目标公司、目标岗位的招聘开放情况，第一时间发现新的投递入口。
 
