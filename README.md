@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="docs/images/LOGO.png" alt="JobSentinel Logo" width="260" style="border-radius: 50%;" />
+  <img src="docs/images/LOGO.png" alt="JobSentinel Logo" width="200" style="border-radius: 50%;" />
 </p>
+
 
 # JobSentinel
 
